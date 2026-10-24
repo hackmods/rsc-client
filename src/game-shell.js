@@ -813,7 +813,7 @@ class GameShell {
     drawString(graphics, string, font, x, y) {
         graphics.setFont(font);
 
-        const { width, height } = graphics.ctx.measureText(string);
+        const { width } = graphics.ctx.measureText(string); const arscPx = parseFloat((/(d+(?:.d+)?)px/.exec(graphics.ctx.font) || [])[1]) || 13; const height = arscPx * 1.15;
 
         graphics.drawString(
             string,
