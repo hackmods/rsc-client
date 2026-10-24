@@ -121,8 +121,12 @@ class GameConnection extends GameShell {
             console.log('Newplayer response: ' + response);
 
             switch (response) {
-                case 2: // success
-                    this.resetLoginVars();
+                case 2: // success — ARSC: auto-login after register
+                    this.showLoginScreenStatus(
+                        'Account created!',
+                        'Logging in...'
+                    );
+                    await this.login(username, password, false);
                     return;
                 case 13: // username taken
                 case 3:
