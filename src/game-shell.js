@@ -68,7 +68,7 @@ class GameShell {
             showRoofs: true,
             remainingExperience: false,
             totalExperience: false,
-            wordFilter: true,
+            wordFilter: false,
             accountManagement: true,
             fpsCounter: false,
             retryLoginOnDisconnect: true,
