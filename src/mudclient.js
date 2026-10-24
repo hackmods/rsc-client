@@ -1178,17 +1178,20 @@ class mudclient extends GameConnection {
                 this.cameraAutoRotatePlayerY = this.localPlayer.currentY;
             }
         } else {
-            if (this.cameraAutoRotatePlayerX - this.localPlayer.currentX < -500 || this.cameraAutoRotatePlayerX - this.localPlayer.currentX > 500 || this.cameraAutoRotatePlayerY - this.localPlayer.currentY < -500 || this.cameraAutoRotatePlayerY - this.localPlayer.currentY > 500) {
-                this.cameraAutoRotatePlayerX = this.localPlayer.currentX;
-                this.cameraAutoRotatePlayerY = this.localPlayer.currentY;
+            const _arscCamAnchor = (this._arscCameraTarget && this._arscCameraTarget.currentX != null)
+                ? this._arscCameraTarget
+                : this.localPlayer;
+            if (this.cameraAutoRotatePlayerX - _arscCamAnchor.currentX < -500 || this.cameraAutoRotatePlayerX - _arscCamAnchor.currentX > 500 || this.cameraAutoRotatePlayerY - _arscCamAnchor.currentY < -500 || this.cameraAutoRotatePlayerY - _arscCamAnchor.currentY > 500) {
+                this.cameraAutoRotatePlayerX = _arscCamAnchor.currentX;
+                this.cameraAutoRotatePlayerY = _arscCamAnchor.currentY;
             }
 
-            if (this.cameraAutoRotatePlayerX !== this.localPlayer.currentX) {
-                this.cameraAutoRotatePlayerX += ((this.localPlayer.currentX - this.cameraAutoRotatePlayerX) / (16 + (((this.cameraZoom - 500) / 15) | 0))) | 0;
+            if (this.cameraAutoRotatePlayerX !== _arscCamAnchor.currentX) {
+                this.cameraAutoRotatePlayerX += ((_arscCamAnchor.currentX - this.cameraAutoRotatePlayerX) / (16 + (((this.cameraZoom - 500) / 15) | 0))) | 0;
             }
 
-            if (this.cameraAutoRotatePlayerY !== this.localPlayer.currentY) {
-                this.cameraAutoRotatePlayerY += ((this.localPlayer.currentY - this.cameraAutoRotatePlayerY) / (16 + (((this.cameraZoom - 500) / 15) | 0))) | 0;
+            if (this.cameraAutoRotatePlayerY !== _arscCamAnchor.currentY) {
+                this.cameraAutoRotatePlayerY += ((_arscCamAnchor.currentY - this.cameraAutoRotatePlayerY) / (16 + (((this.cameraZoom - 500) / 15) | 0))) | 0;
             }
 
             if (this.optionCameraModeAuto) {
