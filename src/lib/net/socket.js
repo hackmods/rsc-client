@@ -34,10 +34,19 @@ class Socket {
     connect() {
         return new Promise((resolve, reject) => {
             if (typeof this.host === 'string') {
-                this.client = new WebSocket(
-                    `ws://${this.host}:${this.port}`,
-                    'binary'
-                );
+                const arscWsPath =
+                    (typeof window !== 'undefined' &&
+                        window.ARSC_WORLD &&
+                        window.ARSC_WORLD.wsPath) ||
+                    '';
+                const arscProto =
+                    typeof location !== 'undefined' && location.protocol === 'https:'
+                        ? 'wss:'
+                        : 'ws:';
+                const arscUrl = arscWsPath
+                    ? `${arscProto}//${location.host}${arscWsPath}`
+                    : `ws://${this.host}:${this.port}`;
+                this.client = new WebSocket(arscUrl, 'binary');
             } else if (this.host.constructor.name === 'Worker') {
                 this.client = new WorkerSocket(this.host);
             } else if (this.host.constructor.name === 'Peer') {
