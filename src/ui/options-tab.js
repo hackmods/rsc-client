@@ -7,13 +7,23 @@ const WIDTH = 196;
 const HEIGHT = 265;
 const LINE_BREAK = 15;
 
+function isInTutorialIsland() {
+    const x = this.regionX + this.localRegionX;
+    const y = this.regionY + this.localRegionY;
+
+    return x >= 190 && x <= 240 && y >= 720 && y <= 770;
+}
+
 function drawUiTabOptions(noMenus) {
+    const showSkipTutorial = this.isInTutorialIsland();
+    const height = HEIGHT + (showSkipTutorial ? LINE_BREAK : 0);
+
     let uiX = this.gameWidth - WIDTH - 3;
     let uiY = 36;
 
     if (this.options.mobile) {
         uiX = 35;
-        uiY = (this.gameHeight / 2 - HEIGHT / 2) | 0;
+        uiY = (this.gameHeight / 2 - height / 2) | 0;
     } else {
         this.surface._drawSprite_from3(
             this.gameWidth - MENU_WIDTH - 3,
@@ -25,7 +35,7 @@ function drawUiTabOptions(noMenus) {
     this.uiOpenX = uiX;
     this.uiOpenY = uiY;
     this.uiOpenWidth = WIDTH;
-    this.uiOpenHeight = HEIGHT;
+    this.uiOpenHeight = height;
 
     this.surface.drawBoxAlpha(uiX, uiY, WIDTH, 65, colours.darkGrey, 160);
 
@@ -44,7 +54,7 @@ function drawUiTabOptions(noMenus) {
         uiX,
         uiY + 225,
         WIDTH,
-        40,
+        height - 225,
         colours.lightGrey3,
         160
     );
@@ -268,6 +278,23 @@ function drawUiTabOptions(noMenus) {
 
     y += LINE_BREAK + 5;
 
+    if (showSkipTutorial) {
+        let skipColour = colours.white;
+
+        if (
+            this.mouseX > x &&
+            this.mouseX < x + WIDTH &&
+            this.mouseY > y - 12 &&
+            this.mouseY < y + 4
+        ) {
+            skipColour = colours.yellow;
+        }
+
+        this.surface.drawString('Skip the tutorial', x, y, 1, skipColour);
+
+        y += LINE_BREAK;
+    }
+
     this.surface.drawString(
         'Always logout when you finish',
         x,
@@ -304,7 +331,7 @@ function drawUiTabOptions(noMenus) {
     const mouseX = this.mouseX - uiX;
     const mouseY = this.mouseY - uiY;
 
-    if (mouseX >= 0 && mouseY >= 0 && mouseX < 196 && mouseY < 265) {
+    if (mouseX >= 0 && mouseY >= 0 && mouseX < WIDTH && mouseY < height) {
         const x = uiX + 3;
         let y = uiY + 30;
 
@@ -456,6 +483,23 @@ function drawUiTabOptions(noMenus) {
 
         y += LINE_BREAK + 5;
 
+        if (showSkipTutorial) {
+            if (
+                this.mouseX > x &&
+                this.mouseX < x + WIDTH &&
+                this.mouseY > y - 12 &&
+                this.mouseY < y + 4 &&
+                this.mouseButtonClick === 1
+            ) {
+                this.confirmTextTop = 'Are you sure you want to skip the tutorial?';
+                this.confirmTextBottom = 'You will be taken to the mainland';
+                this.confirmType = 1;
+                this.showDialogConfirm = true;
+            }
+
+            y += LINE_BREAK;
+        }
+
         if (
             this.mouseX > x &&
             this.mouseX < x + WIDTH &&
@@ -470,4 +514,4 @@ function drawUiTabOptions(noMenus) {
     }
 }
 
-module.exports = { drawUiTabOptions };
+module.exports = { isInTutorialIsland, drawUiTabOptions };

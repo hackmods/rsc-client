@@ -631,6 +631,8 @@ class mudclient extends GameConnection {
             this.drawDialogWelcome();
         } else if (this.showDialogServerMessage) {
             this.drawDialogServerMessage();
+        } else if (this.showDialogConfirm) {
+            this.drawDialogConfirm();
         } else if (this.showUiWildWarn === 1) {
             this.drawDialogWildWarn();
         } else if (this.showDialogBank && this.combatTimeout === 0) {
