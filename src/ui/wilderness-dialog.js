@@ -1,15 +1,13 @@
 const colours = require('./_colours');
 
-// Followed bots never click the warning, so it closes itself.
-const AUTO_CLOSE_MS = 5000;
+const { autoCloseExpired } = require('./auto-close');
+
+const AUTO_CLOSE_MS = 8000;
 
 function drawDialogWildWarn() {
     let y = 97;
 
-    if (!this.wildWarnShownAt) {
-        this.wildWarnShownAt = Date.now();
-    } else if (Date.now() - this.wildWarnShownAt >= AUTO_CLOSE_MS) {
-        this.wildWarnShownAt = 0;
+    if (autoCloseExpired(this, 'wildWarnAutoClose', AUTO_CLOSE_MS, '')) {
         this.showUiWildWarn = 2;
         return;
     }
@@ -135,16 +133,11 @@ function drawDialogWildWarn() {
             this.showUiWildWarn = 2;
         }
 
-        if (this.showUiWildWarn === 2) {
-            this.wildWarnShownAt = 0;
-        }
-
         this.mouseButtonClick = 0;
     }
 }
 
 module.exports = {
     showUiWildWarn: 0,
-    wildWarnShownAt: 0,
     drawDialogWildWarn
 };
