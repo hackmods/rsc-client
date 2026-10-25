@@ -1670,6 +1670,13 @@ class mudclient extends GameConnection {
 
         GameData.loadData(configJag, this.members);
 
+        // ARSC wishing fountains (rsc-server wishing-fountains.js): fountains (26) and wells (2) get "Make a wish"
+        // and "Steal coin"
+        for (const id of [26, 2]) {
+            GameData.objectCommand1[id] = 'Make a wish';
+            GameData.objectCommand2[id] = 'Steal coin';
+        }
+
         const filterJag = await this.readDataFile(
             `filter${version.FILTER}.jag`,
             'Chat system',
