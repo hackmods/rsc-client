@@ -2,7 +2,19 @@ const colours = require('./_colours');
 
 const WIDTH = 400;
 
+// Followed bots never click this box, so it closes itself.
+const AUTO_CLOSE_MS = 10000;
+
 function drawDialogServerMessage() {
+    if (!this.serverMessageShownAt) {
+        this.serverMessageShownAt = Date.now();
+    } else if (Date.now() - this.serverMessageShownAt >= AUTO_CLOSE_MS) {
+        this.serverMessageShownAt = 0;
+        this.showDialogServerMessage = false;
+        this.mouseButtonClick = 0;
+        return;
+    }
+
     let height = 100;
 
     if (this.serverMessageBoxTop) {
@@ -70,10 +82,15 @@ function drawDialogServerMessage() {
         }
     }
 
+    if (!this.showDialogServerMessage) {
+        this.serverMessageShownAt = 0;
+    }
+
     this.mouseButtonClick = 0;
 }
 
 module.exports = {
+    serverMessageShownAt: 0,
     serverMessageBoxTop: false,
     drawDialogServerMessage
 };

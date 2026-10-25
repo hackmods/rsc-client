@@ -2,7 +2,19 @@ const colours = require('./_colours');
 
 const WIDTH = 400;
 
+// Followed bots never click this box, so it closes itself.
+const AUTO_CLOSE_MS = 10000;
+
 function drawDialogWelcome() {
+    if (!this.welcomeShownAt) {
+        this.welcomeShownAt = Date.now();
+    } else if (Date.now() - this.welcomeShownAt >= AUTO_CLOSE_MS) {
+        this.welcomeShownAt = 0;
+        this.showDialogWelcome = false;
+        this.mouseButtonClick = 0;
+        return;
+    }
+
     let height = 65;
 
     if (this.welcomeRecoverySetDays !== 201) {
@@ -238,10 +250,15 @@ function drawDialogWelcome() {
         }
     }
 
+    if (!this.showDialogWelcome) {
+        this.welcomeShownAt = 0;
+    }
+
     this.mouseButtonClick = 0;
 }
 
 module.exports = {
+    welcomeShownAt: 0,
     drawDialogWelcome,
     showDialogWelcome: false
 };
