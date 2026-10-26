@@ -6,7 +6,8 @@
   "scripts": {
     "build-dev": "browserify -t bulkify -t brfs index.js > dist/index.bundle.js",
     "build": "browserify -t bulkify -p tinyify index.js > dist/index.bundle.min.js",
-    "start": "st -p 1337 -nc -d dist"
+    "start": "st -p 1337 -nc -d dist",
+    "test": "node --test \"test/*.test.js\""
   },
   "repository": {
     "type": "git",

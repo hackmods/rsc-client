@@ -639,6 +639,8 @@ class mudclient extends GameConnection {
             this.drawDialogBank();
         } else if (this.showDialogShop && this.combatTimeout === 0) {
             this.drawDialogShop();
+        } else if (this.showDialogExchange && this.combatTimeout === 0) {
+            this.drawDialogExchange();
         } else if (this.showDialogTradeConfirm) {
             this.drawDialogTradeConfirm();
         } else if (this.showDialogTrade) {
@@ -791,6 +793,7 @@ class mudclient extends GameConnection {
         this.mouseButtonDown = 0;
         this.showDialogShop = false;
         this.showDialogBank = false;
+        this.showDialogExchange = false;
         this.isSleeping = false;
         this.friendListCount = 0;
     }
@@ -820,7 +823,17 @@ class mudclient extends GameConnection {
                 return;
             }
 
+            // the Exchange panel takes typing while it is drawn, so its
+            // numbers and searches never reach the chat box
+            const exchangeTyping =
+                this.showDialogExchange && this.combatTimeout === 0;
+
+            if (exchangeTyping) {
+                this.exchangeKeyPress(keyCode);
+            }
+
             if (
+                !exchangeTyping &&
                 this.showChangePasswordStep === 0 &&
                 this.showDialogSocialInput === 0 &&
                 this.showDialogReportAbuseStep === 0 &&
