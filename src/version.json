@@ -1,12 +1,12 @@
 {
     "CLIENT": 204,
-    "CONFIG": 87,
+    "CONFIG": 88,
     "ENTITY": 24,
     "FILTER": 2,
     "FONTS": 1,
     "MAPS": 63,
     "MEDIA": 59,
-    "MODELS": 37,
+    "MODELS": 38,
     "SOUNDS": 1,
     "TEXTURES": 17
 }
