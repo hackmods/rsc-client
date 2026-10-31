@@ -73,8 +73,17 @@ module.exports = {
             message = WordFilter.filter(message);
         }
 
+        // Retain the protocol hash, not a display name, for Tab reply. Replayed
+        // message tokens return above and must never replace the latest sender.
+        const senderName = Utility.hashToUsername(from);
+        if (from.greaterThan(0) && senderName.trim() &&
+            senderName !== 'invalidName' && senderName.length <= 12 &&
+            message.trim()) {
+            this.lastPrivateMessageSender = from;
+        }
+
         this.showServerMessage(
-            `@pri@${Utility.hashToUsername(from)}: tells you ${message}`
+            `@pri@${senderName}: tells you ${message}`
         );
     },
     [serverOpcodes.IGNORE_LIST]: function (data) {

@@ -2,6 +2,18 @@ const Scene = require('../scene');
 const colours = require('./_colours');
 
 const MENU_WIDTH = 245;
+// Matches MENU_MAP_LOOK in the C client's menu contract; unused by legacy JS.
+const MENU_MAP_LOOK = 101;
+const COMPASS_DIRECTIONS = [
+    ['North', 128], ['East', 192], ['South', 0], ['West', 64]
+];
+
+function compassMenuItemClick(index) {
+    if (this.menuType[index] !== MENU_MAP_LOOK) return false;
+    const rotation = this.menuIndex[index];
+    if (COMPASS_DIRECTIONS.some(direction => direction[1] === rotation)) this.cameraRotation = rotation;
+    return true;
+}
 
 const HEIGHT = 152;
 const WIDTH = 156;
@@ -211,6 +223,19 @@ function drawUiTabMinimap(noMenus) {
     const mouseX = this.mouseX - uiX;
     const mouseY = this.mouseY - uiY;
 
+    if (this.options.compassMenu && mouseX > 0 && mouseX <= 32 && mouseY > 0 && mouseY <= 32) {
+        for (const [direction, rotation] of COMPASS_DIRECTIONS) {
+            // Match the client's fixed menu arrays; never grow past capacity.
+            if (this.menuItemsCount >= this.menuType.length) break;
+            const index = this.menuItemsCount++;
+            this.menuItemText1[index] = 'Look';
+            this.menuItemText2[index] = direction;
+            this.menuType[index] = MENU_MAP_LOOK;
+            this.menuIndex[index] = rotation;
+        }
+        return;
+    }
+
     if (
         this.options.resetCompass &&
         this.mouseButtonClick === 1 &&
@@ -254,5 +279,6 @@ function drawUiTabMinimap(noMenus) {
 
 module.exports = {
     drawMinimapEntity,
-    drawUiTabMinimap
+    drawUiTabMinimap,
+    compassMenuItemClick
 };

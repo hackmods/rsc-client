@@ -3,6 +3,8 @@ const serverOpcodes = require('../opcodes/server');
 
 module.exports = {
     [serverOpcodes.BANK_OPEN]: function (data) {
+        // The server also reopens after compaction; preserve an active search.
+        if (!this.showDialogBank && this.resetBankInput) this.resetBankInput();
         this.showDialogBank = true;
 
         let offset = 1;
@@ -27,6 +29,7 @@ module.exports = {
     },
     [serverOpcodes.BANK_CLOSE]: function () {
         this.showDialogBank = false;
+        if (this.resetBankInput) this.resetBankInput();
     },
     [serverOpcodes.BANK_UPDATE]: function (data) {
         let offset = 1;

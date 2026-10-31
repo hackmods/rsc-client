@@ -9,6 +9,13 @@ const SLOT_HEIGHT = 34;
 const WIDTH = SLOT_WIDTH * 5;
 const HEIGHT = SLOT_HEIGHT * 6;
 
+function compactAmount(amount) {
+    const divisor = amount >= 1000000 ? 1000000 : amount >= 1000 ? 1000 : 0;
+    if (!divisor) return amount.toString();
+    // Truncate rather than round so a label never promises more items.
+    return `${Math.floor(amount / divisor * 10) / 10}${divisor === 1000000 ? 'M' : 'K'}`;
+}
+
 function drawUiTabInventory(noMenus) {
     let uiX = this.gameWidth - WIDTH - 3;
     let uiY = 36;
@@ -73,7 +80,9 @@ function drawUiTabInventory(noMenus) {
 
             if (GameData.itemStackable[this.inventoryItemId[i]] === 0) {
                 this.surface.drawString(
-                    this.inventoryItemStackCount[i].toString(),
+                    this.options.compactAmounts
+                        ? compactAmount(this.inventoryItemStackCount[i])
+                        : this.inventoryItemStackCount[i].toString(),
                     slotX + 1,
                     slotY + 10,
                     1,
@@ -102,6 +111,13 @@ function drawUiTabInventory(noMenus) {
         );
     }
 
+    // A footer keeps the occupancy counter clear of every item slot.
+    const footerY = uiY + ((this.inventoryMaxItemCount / 5) | 0) * SLOT_HEIGHT + 12;
+    if (this.options.inventoryCount) {
+        this.surface.drawString(`${this.inventoryItemsCount}/${this.inventoryMaxItemCount}`,
+            uiX + 1, footerY, 1, colours.white);
+    }
+
     if (!noMenus) {
         return;
     }
@@ -121,6 +137,15 @@ function drawUiTabInventory(noMenus) {
         if (itemIndex < this.inventoryItemsCount) {
             const itemID = this.inventoryItemId[itemIndex];
             const itemName = `@lre@${GameData.itemName[itemID]}`;
+
+            if (this.options.compactAmounts && !this.showRightClickMenu &&
+                GameData.itemStackable[itemID] === 0 &&
+                this.inventoryItemStackCount[itemIndex] >= 1000) {
+                const exact = this.inventoryItemStackCount[itemIndex].toString()
+                    .replace(/\B(?=(\d{3})+(?!\d))/g, ',');
+                this.surface.drawStringRight(`Amount: ${exact}`, uiX + WIDTH - 2,
+                    footerY, 1, colours.yellow);
+            }
 
             if (this.selectedSpell >= 0) {
                 if (GameData.spellType[this.selectedSpell] === 3) {

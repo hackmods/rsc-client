@@ -1,6 +1,35 @@
 const clientOpcodes = require('../opcodes/client');
 const colours = require('./_colours');
 
+function handleOptionMenuKey(keyCode) {
+    if (!this.showOptionMenu || this.options.optionNumbers === false) {
+        return false;
+    }
+
+    const index = keyCode - 49;
+
+    if (index < 0 || index > 4) {
+        return false;
+    }
+
+    if (index < this.optionMenuCount) {
+        this.packetStream.newPacket(clientOpcodes.CHOOSE_OPTION);
+        this.packetStream.putByte(index);
+        this.packetStream.sendPacket();
+        this.showOptionMenu = false;
+    }
+
+    return true;
+}
+
+function optionMenuText(client, index) {
+    const entry = client.optionMenuEntry[index];
+
+    return client.options.optionNumbers === false
+        ? entry
+        : `(${index + 1}) ${entry}`;
+}
+
 function drawOptionMenu() {
     const fontSize = this.options.mobile ? 5 : 1;
     const fontHeight = this.options.mobile ? 18 : 12;
@@ -20,7 +49,7 @@ function drawOptionMenu() {
                     uiX -
                         6 +
                         this.surface.textWidth(
-                            this.optionMenuEntry[i],
+                            optionMenuText(this, i),
                             fontSize
                         ) ||
                 this.mouseY <= uiY + i * fontHeight ||
@@ -49,7 +78,7 @@ function drawOptionMenu() {
             this.mouseX <
                 uiX -
                     6 +
-                    this.surface.textWidth(this.optionMenuEntry[i], fontSize) &&
+                    this.surface.textWidth(optionMenuText(this, i), fontSize) &&
             this.mouseY > uiY + i * fontHeight &&
             this.mouseY < uiY + (i * fontHeight + fontHeight)
         ) {
@@ -57,7 +86,7 @@ function drawOptionMenu() {
         }
 
         this.surface.drawString(
-            this.optionMenuEntry[i],
+            optionMenuText(this, i),
             uiX,
             uiY + (fontHeight + i * fontHeight),
             fontSize,
@@ -66,4 +95,4 @@ function drawOptionMenu() {
     }
 }
 
-module.exports = { drawOptionMenu };
+module.exports = { drawOptionMenu, handleOptionMenuKey };

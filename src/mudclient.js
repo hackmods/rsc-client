@@ -658,6 +658,7 @@ class mudclient extends GameConnection {
         } else if (this.showDialogSocialInput !== 0) {
             this.drawDialogSocialInput();
         } else {
+            this.drawStatusOverlay();
             if (this.showOptionMenu) {
                 this.drawOptionMenu();
 
@@ -666,7 +667,7 @@ class mudclient extends GameConnection {
                 }
             }
 
-            if (this.localPlayer.animationCurrent === 8 ||
+            if (this.options.combatStyleAlways || this.localPlayer.animationCurrent === 8 ||
                 this.localPlayer.animationCurrent === 9) {
                 this.drawDialogCombatStyle();
             }
@@ -741,6 +742,10 @@ class mudclient extends GameConnection {
     }
 
     resetGame() {
+        this.resetStatusOverlay();
+        this.experienceBaselineReady = false;
+        this.lastPrivateMessageSender = null;
+        this.resetBankInput();
         this.systemUpdate = 0;
         this.combatStyle = 0;
         this.logoutTimeout = 0;
@@ -825,11 +830,34 @@ class mudclient extends GameConnection {
 
             // the Exchange panel takes typing while it is drawn, so its
             // numbers and searches never reach the chat box
-            const exchangeTyping =
+            const higherModal = this.isSleeping || this.logoutTimeout !== 0 ||
+                this.showDialogWelcome || this.showDialogServerMessage ||
+                this.showDialogConfirm || this.showUiWildWarn === 1;
+            const bankVisible = !higherModal && this.showDialogBank && this.combatTimeout === 0;
+            const exchangeTyping = !higherModal && !bankVisible && !this.showDialogShop &&
                 this.showDialogExchange && this.combatTimeout === 0;
+
+            if (bankVisible && this.bankKeyPress(keyCode)) {
+                return true;
+            }
 
             if (exchangeTyping) {
                 this.exchangeKeyPress(keyCode);
+                return true;
+            }
+
+            const blockingDialog = this.isSleeping || this.logoutTimeout !== 0 ||
+                this.showDialogWelcome || this.showDialogServerMessage ||
+                this.showDialogConfirm || this.showUiWildWarn === 1 ||
+                this.showChangePasswordStep !== 0 || this.showDialogSocialInput !== 0 ||
+                this.showDialogReportAbuseStep !== 0 || this.showDialogTrade ||
+                this.showDialogTradeConfirm || this.showDialogDuel ||
+                this.showDialogDuelConfirm || this.showDialogShop;
+
+            if (!blockingDialog && !this.showDialogBank && !this.showDialogExchange) {
+                if (this.handleOptionMenuKey(keyCode) || this.handleQuickReplyKey(keyCode)) {
+                    return true;
+                }
             }
 
             if (
@@ -1390,6 +1418,8 @@ class mudclient extends GameConnection {
     }
 
     handleCameraZoom() {
+        // Bank scrolling and text input own the wheel/keys while displayed.
+        if (this.showDialogBank && this.combatTimeout === 0) return;
         if (this.keyUp && !this.ctrl) {
             this.cameraZoom -= 16;
         } else if (this.keyDown && !this.ctrl) {
@@ -1764,6 +1794,10 @@ class mudclient extends GameConnection {
     }
 
     resetLoginVars() {
+        this.resetStatusOverlay();
+        this.experienceBaselineReady = false;
+        this.lastPrivateMessageSender = null;
+        this.resetBankInput();
         this.systemUpdate = 0;
         this.loginScreen = 0;
         this.loggedIn = 0;
@@ -3674,6 +3708,7 @@ class mudclient extends GameConnection {
     }
 
     menuItemClick(i) {
+        if (this.compassMenuItemClick(i)) return;
         const menuX = this.menuItemX[i];
         const menuY = this.menuItemY[i];
         const menuIndex = this.menuIndex[i];

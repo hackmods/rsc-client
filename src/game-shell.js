@@ -72,6 +72,15 @@ class GameShell {
             accountManagement: true,
             fpsCounter: false,
             retryLoginOnDisconnect: true,
+            optionNumbers: true,
+            experienceDrops: false,
+            statusBars: false,
+            tabReply: true,
+            inventoryCount: false,
+            compactAmounts: false,
+            bankValue: false,
+            combatStyleAlways: false,
+            compassMenu: false,
             mobile: false
         };
 
@@ -282,6 +291,7 @@ class GameShell {
     }
 
     openKeyboard(type = 'text', text, maxLength, style) {
+        clearInterval(this.keyboardUpdateInterval);
         this.mobileInputCaret = -1;
         this.lastMobileInput = text;
         this.toggleKeyboard = true;
@@ -290,6 +300,7 @@ class GameShell {
             type === 'password' ? this.mobilePassword : this.mobileInput;
 
         this.mobileInputEl.value = text;
+        this.mobileInputEl.inputMode = type === 'number' ? 'numeric' : 'text';
         this.mobileInputEl.maxLength = maxLength;
 
         this.mobileInputEl.style.display = 'block';
@@ -305,6 +316,7 @@ class GameShell {
 
     mobileKeyDown(e) {
         if (e.keyCode === keycodes.ENTER) {
+            this.mobileKeyboardUpdate();
             this.closeKeyboard();
             this.keyPressed(e);
         }
@@ -340,11 +352,15 @@ class GameShell {
             e.preventDefault();
         }
 
-        if ([8, 10, 13, 9].includes(code)) {
+        if ([8, 10, 13, 9, 27].includes(code)) {
             charCode = code;
         }
 
-        this.handleKeyPress(charCode);
+        // Modal controls own their text; do not also append it to PM/sleep
+        // buffers or move the camera when a UI handler consumed the key.
+        if (this.handleKeyPress(charCode) === true) {
+            return;
+        }
 
         if (code === keycodes.LEFT_ARROW) {
             this.keyLeft = true;

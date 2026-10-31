@@ -1,736 +1,247 @@
 const GameData = require('../game-data');
 const clientOpcodes = require('../opcodes/client');
 const colours = require('./_colours');
-
 const WIDTH = 408;
 const HEIGHT = 334;
-
 const ITEMS_PER_PAGE = 48;
 const MAGIC_DEPOSIT = 0x87654321;
 const MAGIC_WITHDRAW = 0x12345678;
 
-function drawDialogBank() {
-    if (this.bankActivePage > 0 && this.bankItemCount <= ITEMS_PER_PAGE) {
-        this.bankActivePage = 0;
+// Keep filtered positions separate from the server's compacting bank slots.
+function bankView(client) {
+    const query = (client.bankSearch || '').trim().toLowerCase();
+    const prefixes = [];
+    const slots = [];
+    client.bankSelectedItemSlot = -1;
+    for (let i = 0; i < client.bankItemCount; i++) {
+        const id = client.bankItems[i];
+        if (id < 0) continue;
+        if (id === client.bankSelectedItem) client.bankSelectedItemSlot = i;
+        const name = (GameData.itemName[id] || '').toLowerCase();
+        if (query && name.startsWith(query)) prefixes.push(i);
+        else if (!query || name.includes(query)) slots.push(i);
     }
+    if (client.bankSelectedItemSlot < 0) client.bankSelectedItem = -2;
+    client.bankActivePage = Math.max(0, Math.min(client.bankActivePage || 0, Math.max(0, Math.ceil((prefixes.length + slots.length) / ITEMS_PER_PAGE) - 1)));
+    return prefixes.concat(slots);
+}
 
-    if (this.bankActivePage > 1 && this.bankItemCount <= 96) {
-        this.bankActivePage = 1;
-    }
-
-    if (this.bankActivePage > 2 && this.bankItemCount <= 144) {
-        this.bankActivePage = 2;
-    }
-
-    if (
-        this.bankSelectedItemSlot >= this.bankItemCount ||
-        this.bankSelectedItemSlot < 0
-    ) {
-        this.bankSelectedItemSlot = -1;
-    }
-
-    if (
-        this.bankSelectedItemSlot !== -1 &&
-        this.bankItems[this.bankSelectedItemSlot] !== this.bankSelectedItem
-    ) {
-        this.bankSelectedItemSlot = -1;
-        this.bankSelectedItem = -2;
-    }
-
-    if (this.mouseButtonClick !== 0) {
-        this.mouseButtonClick = 0;
-
-        let mouseX =
-            this.mouseX - (((this.gameWidth / 2) | 0) - ((WIDTH / 2) | 0));
-
-        let mouseY =
-            this.mouseY - (((this.gameHeight / 2) | 0) - ((HEIGHT / 2) | 0));
-
-        if (mouseX >= 0 && mouseY >= 12 && mouseX < 408 && mouseY < 280) {
-            let slotIndex = this.bankActivePage * ITEMS_PER_PAGE;
-
-            for (let row = 0; row < 6; row++) {
-                for (let col = 0; col < 8; col++) {
-                    const slotX = 7 + col * 49;
-                    const slotY = 28 + row * 34;
-
-                    if (
-                        mouseX > slotX &&
-                        mouseX < slotX + 49 &&
-                        mouseY > slotY &&
-                        mouseY < slotY + 34 &&
-                        slotIndex < this.bankItemCount &&
-                        this.bankItems[slotIndex] !== -1
-                    ) {
-                        this.bankSelectedItem = this.bankItems[slotIndex];
-                        this.bankSelectedItemSlot = slotIndex;
-                    }
-
-                    slotIndex++;
-                }
-            }
-
-            mouseX = 256 - ((WIDTH / 2) | 0);
-            mouseY = 170 - ((HEIGHT / 2) | 0);
-
-            let slot = 0;
-
-            if (this.bankSelectedItemSlot < 0) {
-                slot = -1;
-            } else {
-                slot = this.bankItems[this.bankSelectedItemSlot];
-            }
-
-            if (slot !== -1) {
-                let itemAmount = this.bankItemsCount[this.bankSelectedItemSlot];
-
-                if (GameData.itemStackable[slot] === 1 && itemAmount > 1) {
-                    itemAmount = 1;
-                }
-
-                if (
-                    itemAmount >= 1 &&
-                    this.mouseX >= mouseX + 220 &&
-                    this.mouseY >= mouseY + 238 &&
-                    this.mouseX < mouseX + 250 &&
-                    this.mouseY <= mouseY + 249
-                ) {
-                    this.packetStream.newPacket(clientOpcodes.BANK_WITHDRAW);
-                    this.packetStream.putShort(slot);
-                    this.packetStream.putShort(1);
-                    this.packetStream.putInt(MAGIC_WITHDRAW);
-                    this.packetStream.sendPacket();
-                }
-
-                if (
-                    itemAmount >= 5 &&
-                    this.mouseX >= mouseX + 250 &&
-                    this.mouseY >= mouseY + 238 &&
-                    this.mouseX < mouseX + 280 &&
-                    this.mouseY <= mouseY + 249
-                ) {
-                    this.packetStream.newPacket(clientOpcodes.BANK_WITHDRAW);
-                    this.packetStream.putShort(slot);
-                    this.packetStream.putShort(5);
-                    this.packetStream.putInt(MAGIC_WITHDRAW);
-                    this.packetStream.sendPacket();
-                }
-
-                if (
-                    itemAmount >= 25 &&
-                    this.mouseX >= mouseX + 280 &&
-                    this.mouseY >= mouseY + 238 &&
-                    this.mouseX < mouseX + 305 &&
-                    this.mouseY <= mouseY + 249
-                ) {
-                    this.packetStream.newPacket(clientOpcodes.BANK_WITHDRAW);
-                    this.packetStream.putShort(slot);
-                    this.packetStream.putShort(25);
-                    this.packetStream.putInt(MAGIC_WITHDRAW);
-                    this.packetStream.sendPacket();
-                }
-
-                if (
-                    itemAmount >= 100 &&
-                    this.mouseX >= mouseX + 305 &&
-                    this.mouseY >= mouseY + 238 &&
-                    this.mouseX < mouseX + 335 &&
-                    this.mouseY <= mouseY + 249
-                ) {
-                    this.packetStream.newPacket(clientOpcodes.BANK_WITHDRAW);
-                    this.packetStream.putShort(slot);
-                    this.packetStream.putShort(100);
-                    this.packetStream.putInt(MAGIC_WITHDRAW);
-                    this.packetStream.sendPacket();
-                }
-
-                if (
-                    itemAmount >= 500 &&
-                    this.mouseX >= mouseX + 335 &&
-                    this.mouseY >= mouseY + 238 &&
-                    this.mouseX < mouseX + 368 &&
-                    this.mouseY <= mouseY + 249
-                ) {
-                    this.packetStream.newPacket(clientOpcodes.BANK_WITHDRAW);
-                    this.packetStream.putShort(slot);
-                    this.packetStream.putShort(500);
-                    this.packetStream.putInt(MAGIC_WITHDRAW);
-                    this.packetStream.sendPacket();
-                }
-
-                if (
-                    itemAmount >= 2500 &&
-                    this.mouseX >= mouseX + 370 &&
-                    this.mouseY >= mouseY + 238 &&
-                    this.mouseX < mouseX + 400 &&
-                    this.mouseY <= mouseY + 249
-                ) {
-                    this.packetStream.newPacket(clientOpcodes.BANK_WITHDRAW);
-                    this.packetStream.putShort(slot);
-                    this.packetStream.putShort(2500);
-                    this.packetStream.putInt(MAGIC_WITHDRAW);
-                    this.packetStream.sendPacket();
-                }
-
-                if (
-                    this.getInventoryCount(slot) >= 1 &&
-                    this.mouseX >= mouseX + 220 &&
-                    this.mouseY >= mouseY + 263 &&
-                    this.mouseX < mouseX + 250 &&
-                    this.mouseY <= mouseY + 274
-                ) {
-                    this.packetStream.newPacket(clientOpcodes.BANK_DEPOSIT);
-                    this.packetStream.putShort(slot);
-                    this.packetStream.putShort(1);
-                    this.packetStream.putInt(MAGIC_DEPOSIT);
-                    this.packetStream.sendPacket();
-                }
-
-                if (
-                    this.getInventoryCount(slot) >= 5 &&
-                    this.mouseX >= mouseX + 250 &&
-                    this.mouseY >= mouseY + 263 &&
-                    this.mouseX < mouseX + 280 &&
-                    this.mouseY <= mouseY + 274
-                ) {
-                    this.packetStream.newPacket(clientOpcodes.BANK_DEPOSIT);
-                    this.packetStream.putShort(slot);
-                    this.packetStream.putShort(5);
-                    this.packetStream.putInt(MAGIC_DEPOSIT);
-                    this.packetStream.sendPacket();
-                }
-                if (
-                    this.getInventoryCount(slot) >= 25 &&
-                    this.mouseX >= mouseX + 280 &&
-                    this.mouseY >= mouseY + 263 &&
-                    this.mouseX < mouseX + 305 &&
-                    this.mouseY <= mouseY + 274
-                ) {
-                    this.packetStream.newPacket(clientOpcodes.BANK_DEPOSIT);
-                    this.packetStream.putShort(slot);
-                    this.packetStream.putShort(25);
-                    this.packetStream.putInt(MAGIC_DEPOSIT);
-                    this.packetStream.sendPacket();
-                }
-
-                if (
-                    this.getInventoryCount(slot) >= 100 &&
-                    this.mouseX >= mouseX + 305 &&
-                    this.mouseY >= mouseY + 263 &&
-                    this.mouseX < mouseX + 335 &&
-                    this.mouseY <= mouseY + 274
-                ) {
-                    this.packetStream.newPacket(clientOpcodes.BANK_DEPOSIT);
-                    this.packetStream.putShort(slot);
-                    this.packetStream.putShort(100);
-                    this.packetStream.putInt(MAGIC_DEPOSIT);
-                    this.packetStream.sendPacket();
-                }
-
-                if (
-                    this.getInventoryCount(slot) >= 500 &&
-                    this.mouseX >= mouseX + 335 &&
-                    this.mouseY >= mouseY + 263 &&
-                    this.mouseX < mouseX + 368 &&
-                    this.mouseY <= mouseY + 274
-                ) {
-                    this.packetStream.newPacket(clientOpcodes.BANK_DEPOSIT);
-                    this.packetStream.putShort(slot);
-                    this.packetStream.putShort(500);
-                    this.packetStream.putInt(MAGIC_DEPOSIT);
-                    this.packetStream.sendPacket();
-                }
-
-                if (
-                    this.getInventoryCount(slot) >= 2500 &&
-                    this.mouseX >= mouseX + 370 &&
-                    this.mouseY >= mouseY + 263 &&
-                    this.mouseX < mouseX + 400 &&
-                    this.mouseY <= mouseY + 274
-                ) {
-                    this.packetStream.newPacket(clientOpcodes.BANK_DEPOSIT);
-                    this.packetStream.putShort(slot);
-                    this.packetStream.putShort(2500);
-                    this.packetStream.putInt(MAGIC_DEPOSIT);
-                    this.packetStream.sendPacket();
-                }
-            }
-        } else if (
-            this.bankItemCount > ITEMS_PER_PAGE &&
-            mouseX >= 50 &&
-            mouseX <= 115 &&
-            mouseY <= 12
-        ) {
-            this.bankActivePage = 0;
-        } else if (
-            this.bankItemCount > ITEMS_PER_PAGE &&
-            mouseX >= 115 &&
-            mouseX <= 180 &&
-            mouseY <= 12
-        ) {
-            this.bankActivePage = 1;
-        } else if (
-            this.bankItemCount > ITEMS_PER_PAGE * 2 &&
-            mouseX >= 180 &&
-            mouseX <= 245 &&
-            mouseY <= 12
-        ) {
-            this.bankActivePage = 2;
-        } else if (
-            this.bankItemCount > ITEMS_PER_PAGE * 3 &&
-            mouseX >= 245 &&
-            mouseX <= 310 &&
-            mouseY <= 12
-        ) {
-            this.bankActivePage = 3;
-        } else {
-            this.packetStream.newPacket(clientOpcodes.BANK_CLOSE);
-            this.packetStream.sendPacket();
-            this.showDialogBank = false;
-            return;
+function available(client, id, withdraw) {
+    if (!withdraw) return Math.min(65535, client.getInventoryCount(id));
+    for (let i = 0; i < client.bankItemCount; i++) {
+        if (client.bankItems[i] === id) {
+            return Math.min(GameData.itemStackable[id] === 1 ? 1 : 65535, client.bankItemsCount[i]);
         }
     }
-
-    const x = ((this.gameWidth / 2) | 0) - ((WIDTH / 2) | 0);
-    const y = ((this.gameHeight / 2) | 0) - ((HEIGHT / 2) | 0);
-
-    this.surface.drawBox(x, y, 408, 12, 192);
-    this.surface.drawBoxAlpha(x, y + 12, 408, 17, colours.grey, 160);
-    this.surface.drawBoxAlpha(x, y + 29, 8, 204, colours.grey, 160);
-    this.surface.drawBoxAlpha(x + 399, y + 29, 9, 204, colours.grey, 160);
-    this.surface.drawBoxAlpha(x, y + 233, 408, 47, colours.grey, 160);
-    this.surface.drawString('Bank', x + 1, y + 10, 1, colours.white);
-
-    // TODO drawPages
-
-    let offsetX = 50;
-
-    if (this.bankItemCount > ITEMS_PER_PAGE) {
-        let textColour = colours.white;
-
-        if (this.bankActivePage === 0) {
-            textColour = colours.red;
-        } else if (
-            this.mouseX > x + offsetX &&
-            this.mouseY >= y &&
-            this.mouseX < x + offsetX + 65 &&
-            this.mouseY < y + 12
-        ) {
-            textColour = colours.yellow;
-        }
-
-        this.surface.drawString('<page 1>', x + offsetX, y + 10, 1, textColour);
-
-        offsetX += 65;
-        textColour = colours.white;
-
-        if (this.bankActivePage === 1) {
-            textColour = colours.red;
-        } else if (
-            this.mouseX > x + offsetX &&
-            this.mouseY >= y &&
-            this.mouseX < x + offsetX + 65 &&
-            this.mouseY < y + 12
-        ) {
-            textColour = colours.yellow;
-        }
-
-        this.surface.drawString('<page 2>', x + offsetX, y + 10, 1, textColour);
-        offsetX += 65;
-    }
-
-    if (this.bankItemCount > ITEMS_PER_PAGE * 2) {
-        let textColour = colours.white;
-
-        if (this.bankActivePage === 2) {
-            textColour = colours.red;
-        } else if (
-            this.mouseX > x + offsetX &&
-            this.mouseY >= y &&
-            this.mouseX < x + offsetX + 65 &&
-            this.mouseY < y + 12
-        ) {
-            textColour = colours.yellow;
-        }
-
-        this.surface.drawString('<page 3>', x + offsetX, y + 10, 1, textColour);
-        offsetX += 65;
-    }
-
-    if (this.bankItemCount > ITEMS_PER_PAGE * 3) {
-        let textColour = colours.white;
-
-        if (this.bankActivePage === 3) {
-            textColour = colours.red;
-        } else if (
-            this.mouseX > x + offsetX &&
-            this.mouseY >= y &&
-            this.mouseX < x + offsetX + 65 &&
-            this.mouseY < y + 12
-        ) {
-            textColour = colours.yellow;
-        }
-
-        this.surface.drawString('<page 4>', x + offsetX, y + 10, 1, textColour);
-        offsetX += 65;
-    }
-
-    let textColour = colours.white;
-
-    if (
-        this.mouseX > x + 320 &&
-        this.mouseY >= y &&
-        this.mouseX < x + 408 &&
-        this.mouseY < y + 12
-    ) {
-        textColour = colours.red;
-    }
-
-    this.surface.drawStringRight(
-        'Close window',
-        x + 406,
-        y + 10,
-        1,
-        textColour
-    );
-
-    this.surface.drawString(
-        'Number in bank in green',
-        x + 7,
-        y + 24,
-        1,
-        colours.green
-    );
-
-    this.surface.drawString(
-        'Number held in blue',
-        x + 289,
-        y + 24,
-        1,
-        colours.cyan
-    );
-
-    let selectedIndex = this.bankActivePage * ITEMS_PER_PAGE;
-
-    for (let row = 0; row < 6; row++) {
-        for (let col = 0; col < 8; col++) {
-            const slotX = x + 7 + col * 49;
-            const slotY = y + 28 + row * 34;
-
-            if (this.bankSelectedItemSlot === selectedIndex) {
-                this.surface.drawBoxAlpha(
-                    slotX,
-                    slotY,
-                    49,
-                    34,
-                    colours.red,
-                    160
-                );
-            } else {
-                this.surface.drawBoxAlpha(
-                    slotX,
-                    slotY,
-                    49,
-                    34,
-                    colours.lightGrey2,
-                    160
-                );
-            }
-
-            this.surface.drawBoxEdge(slotX, slotY, 50, 35, 0);
-
-            if (
-                selectedIndex < this.bankItemCount &&
-                this.bankItems[selectedIndex] !== -1
-            ) {
-                this.surface._spriteClipping_from9(
-                    slotX,
-                    slotY,
-                    48,
-                    32,
-                    this.spriteItem +
-                        GameData.itemPicture[this.bankItems[selectedIndex]],
-                    GameData.itemMask[this.bankItems[selectedIndex]],
-                    0,
-                    0,
-                    false
-                );
-
-                this.surface.drawString(
-                    this.bankItemsCount[selectedIndex].toString(),
-                    slotX + 1,
-                    slotY + 10,
-                    1,
-                    colours.green
-                );
-
-                this.surface.drawStringRight(
-                    this.getInventoryCount(
-                        this.bankItems[selectedIndex]
-                    ).toString(),
-                    slotX + 47,
-                    slotY + 29,
-                    1,
-                    colours.cyan
-                );
-            }
-
-            selectedIndex++;
-        }
-    }
-
-    this.surface.drawLineHoriz(x + 5, y + 256, 398, 0);
-
-    if (this.bankSelectedItemSlot === -1) {
-        this.surface.drawStringCenter(
-            'Select an object to withdraw or deposit',
-            x + 204,
-            y + 248,
-            3,
-            colours.yellow
-        );
-
-        return;
-    }
-
-    let itemType = 0;
-
-    if (this.bankSelectedItemSlot < 0) {
-        itemType = -1;
-    } else {
-        itemType = this.bankItems[this.bankSelectedItemSlot];
-    }
-
-    if (itemType !== -1) {
-        let itemCount = this.bankItemsCount[this.bankSelectedItemSlot];
-
-        if (GameData.itemStackable[itemType] === 1 && itemCount > 1) {
-            itemCount = 1;
-        }
-
-        if (itemCount > 0) {
-            this.surface.drawString(
-                `Withdraw ${GameData.itemName[itemType]}`,
-                x + 2,
-                y + 248,
-                1,
-                colours.white
-            );
-
-            textColour = colours.white;
-
-            if (
-                this.mouseX >= x + 220 &&
-                this.mouseY >= y + 238 &&
-                this.mouseX < x + 250 &&
-                this.mouseY <= y + 249
-            ) {
-                textColour = colours.red;
-            }
-
-            this.surface.drawString('One', x + 222, y + 248, 1, textColour);
-
-            if (itemCount >= 5) {
-                textColour = colours.white;
-
-                if (
-                    this.mouseX >= x + 250 &&
-                    this.mouseY >= y + 238 &&
-                    this.mouseX < x + 280 &&
-                    this.mouseY <= y + 249
-                ) {
-                    textColour = colours.red;
-                }
-
-                this.surface.drawString(
-                    'Five',
-                    x + 252,
-                    y + 248,
-                    1,
-                    textColour
-                );
-            }
-
-            if (itemCount >= 25) {
-                textColour = colours.white;
-
-                if (
-                    this.mouseX >= x + 280 &&
-                    this.mouseY >= y + 238 &&
-                    this.mouseX < x + 305 &&
-                    this.mouseY <= y + 249
-                ) {
-                    textColour = colours.red;
-                }
-
-                this.surface.drawString('25', x + 282, y + 248, 1, textColour);
-            }
-
-            if (itemCount >= 100) {
-                textColour = colours.white;
-
-                if (
-                    this.mouseX >= x + 305 &&
-                    this.mouseY >= y + 238 &&
-                    this.mouseX < x + 335 &&
-                    this.mouseY <= y + 249
-                ) {
-                    textColour = colours.red;
-                }
-
-                this.surface.drawString('100', x + 307, y + 248, 1, textColour);
-            }
-
-            if (itemCount >= 500) {
-                textColour = colours.white;
-
-                if (
-                    this.mouseX >= x + 335 &&
-                    this.mouseY >= y + 238 &&
-                    this.mouseX < x + 368 &&
-                    this.mouseY <= y + 249
-                ) {
-                    textColour = colours.red;
-                }
-
-                this.surface.drawString('500', x + 337, y + 248, 1, textColour);
-            }
-
-            if (itemCount >= 2500) {
-                textColour = colours.white;
-
-                if (
-                    this.mouseX >= x + 370 &&
-                    this.mouseY >= y + 238 &&
-                    this.mouseX < x + 400 &&
-                    this.mouseY <= y + 249
-                ) {
-                    textColour = colours.red;
-                }
-
-                this.surface.drawString(
-                    '2500',
-                    x + 370,
-                    y + 248,
-                    1,
-                    textColour
-                );
-            }
-        }
-
-        if (this.getInventoryCount(itemType) > 0) {
-            this.surface.drawString(
-                `Deposit ${GameData.itemName[itemType]}`,
-                x + 2,
-                y + 273,
-                1,
-                colours.white
-            );
-
-            textColour = colours.white;
-
-            if (
-                this.mouseX >= x + 220 &&
-                this.mouseY >= y + 263 &&
-                this.mouseX < x + 250 &&
-                this.mouseY <= y + 274
-            ) {
-                textColour = colours.red;
-            }
-
-            this.surface.drawString('One', x + 222, y + 273, 1, textColour);
-
-            if (this.getInventoryCount(itemType) >= 5) {
-                textColour = colours.white;
-
-                if (
-                    this.mouseX >= x + 250 &&
-                    this.mouseY >= y + 263 &&
-                    this.mouseX < x + 280 &&
-                    this.mouseY <= y + 274
-                ) {
-                    textColour = colours.red;
-                }
-
-                this.surface.drawString(
-                    'Five',
-                    x + 252,
-                    y + 273,
-                    1,
-                    textColour
-                );
-            }
-
-            if (this.getInventoryCount(itemType) >= 25) {
-                textColour = colours.white;
-
-                if (
-                    this.mouseX >= x + 280 &&
-                    this.mouseY >= y + 263 &&
-                    this.mouseX < x + 305 &&
-                    this.mouseY <= y + 274
-                ) {
-                    textColour = colours.red;
-                }
-
-                this.surface.drawString('25', x + 282, y + 273, 1, textColour);
-            }
-
-            if (this.getInventoryCount(itemType) >= 100) {
-                textColour = colours.white;
-
-                if (
-                    this.mouseX >= x + 305 &&
-                    this.mouseY >= y + 263 &&
-                    this.mouseX < x + 335 &&
-                    this.mouseY <= y + 274
-                ) {
-                    textColour = colours.red;
-                }
-
-                this.surface.drawString('100', x + 307, y + 273, 1, textColour);
-            }
-
-            if (this.getInventoryCount(itemType) >= 500) {
-                textColour = colours.white;
-
-                if (
-                    this.mouseX >= x + 335 &&
-                    this.mouseY >= y + 263 &&
-                    this.mouseX < x + 368 &&
-                    this.mouseY <= y + 274
-                ) {
-                    textColour = colours.red;
-                }
-
-                this.surface.drawString('500', x + 337, y + 273, 1, textColour);
-            }
-
-            if (this.getInventoryCount(itemType) >= 2500) {
-                textColour = colours.white;
-
-                if (
-                    this.mouseX >= x + 370 &&
-                    this.mouseY >= y + 263 &&
-                    this.mouseX < x + 400 &&
-                    this.mouseY <= y + 274
-                ) {
-                    textColour = colours.red;
-                }
-
-                this.surface.drawString(
-                    '2500',
-                    x + 370,
-                    y + 273,
-                    1,
-                    textColour
-                );
-            }
-        }
+    return 0;
+}
+
+function transact(client, id, amount, withdraw) {
+    if (!Number.isInteger(amount) || amount < 1 || amount > 65535 || amount > available(client, id, withdraw)) return false;
+    client.packetStream.newPacket(withdraw ? clientOpcodes.BANK_WITHDRAW : clientOpcodes.BANK_DEPOSIT);
+    client.packetStream.putShort(id);
+    client.packetStream.putShort(amount);
+    client.packetStream.putInt(withdraw ? MAGIC_WITHDRAW : MAGIC_DEPOSIT);
+    client.packetStream.sendPacket();
+    return true;
+}
+
+function keyboard(client, text, numeric, x, y) {
+    if (client.options && client.options.mobile && client.openKeyboard) {
+        client.lastMobileInput = text;
+        client.openKeyboard(numeric ? 'number' : 'text', text, numeric ? 5 : 40, {
+            left: `${x}px`, top: `${y}px`, width: '300px', height: '20px'
+        });
     }
 }
 
-module.exports = {
-    bankActivePage: 0,
-    drawDialogBank
-};
+function closeBankKeyboard(client) {
+    if (client.options && client.options.mobile && client.mobileInputEl && client.closeKeyboard) client.closeKeyboard();
+}
+
+function resetBankInput() {
+    this.bankSearch = '';
+    this.bankSearchFocus = false;
+    this.bankAmountInput = null;
+    this.bankActivePage = 0;
+    closeBankKeyboard(this);
+}
+
+function bankKeyPress(keyCode) {
+    if (!this.showDialogBank || (!this.bankAmountInput && !this.bankSearchFocus)) return false;
+    const input = this.bankAmountInput;
+    if (keyCode === 27) {
+        if (input) this.bankAmountInput = null;
+        else this.bankSearchFocus = false;
+        closeBankKeyboard(this);
+    } else if (keyCode === 13 || keyCode === 10) {
+        if (input) {
+            const amount = /^\d+$/.test(input.text) ? Number(input.text) : NaN;
+            if (transact(this, input.id, amount, input.withdraw)) {
+                this[input.withdraw ? 'bankLastWithdrawX' : 'bankLastDepositX'] = amount;
+                this.bankAmountInput = null;
+            } else input.error = 'Enter an available amount from 1 to 65535';
+        } else this.bankSearchFocus = false;
+        if (!this.bankAmountInput) closeBankKeyboard(this);
+    } else if (keyCode === 8) {
+        if (input) { input.text = input.text.slice(0, -1); input.error = ''; }
+        else { this.bankSearch = (this.bankSearch || '').slice(0, -1); this.bankActivePage = 0; }
+    } else if (input) {
+        if (keyCode >= 48 && keyCode <= 57 && input.text.length < 5) { input.text += String.fromCharCode(keyCode); input.error = ''; }
+    } else if (keyCode >= 32 && keyCode <= 126 && (this.bankSearch || '').length < 40) {
+        this.bankSearch = (this.bankSearch || '') + String.fromCharCode(keyCode);
+        this.bankActivePage = 0;
+    }
+    return true;
+}
+
+function amountButtons(client, withdraw, count) {
+    const last = client[withdraw ? 'bankLastWithdrawX' : 'bankLastDepositX'];
+    return [
+        { x: 220, width: 27, label: 'One', amount: 1 },
+        { x: 247, width: 27, label: 'Five', amount: 5 },
+        { x: 274, width: 23, label: '10', amount: 10 },
+        { x: 297, width: 23, label: '50', amount: 50 },
+        { x: 320, width: 20, label: 'X', amount: 'x' },
+        { x: 340, width: 36, label: last ? String(last) : '-', amount: last || Infinity },
+        { x: 376, width: 31, label: 'All', amount: count }
+    ];
+}
+
+function drawDialogBank() {
+    const slots = bankView(this);
+    const x = ((this.gameWidth / 2) | 0) - WIDTH / 2;
+    const y = ((this.gameHeight / 2) | 0) - HEIGHT / 2;
+    const mx = this.mouseX - x;
+    const my = this.mouseY - y;
+    const pages = Math.ceil(slots.length / ITEMS_PER_PAGE);
+    if (this.mouseScrollDelta && mx >= 0 && mx < WIDTH && my >= 0 && my < 324) {
+        if (!this.bankAmountInput) this.bankActivePage = Math.max(0, Math.min(Math.max(0, pages - 1), this.bankActivePage + Math.sign(this.mouseScrollDelta)));
+        this.mouseScrollDelta = 0;
+    }
+    if (this.mouseButtonClick) {
+        this.mouseButtonClick = 0;
+        if (this.bankAmountInput) {
+            // A touch-accessible cancel area; consume the click without passing
+            // it through to the bank controls underneath the modal.
+            if (mx < 24 || mx >= 384 || my < 102 || my >= 186 || my >= 158) {
+                this.bankAmountInput = null;
+                closeBankKeyboard(this);
+            } else {
+                keyboard(this, this.bankAmountInput.text, true, x + 54, y + 145);
+            }
+        } else if (mx >= 0 && mx < WIDTH && my >= 280 && my < 300) {
+            this.bankSearchFocus = true;
+            keyboard(this, this.bankSearch || '', false, x + 48, y + 280);
+        } else if (mx < 0 || mx >= WIDTH || my < 0 || my >= 324 || (my < 12 && mx >= 320)) {
+            this.packetStream.newPacket(clientOpcodes.BANK_CLOSE);
+            this.packetStream.sendPacket();
+            this.showDialogBank = false;
+            resetBankInput.call(this);
+            return;
+        } else {
+            if (this.bankSearchFocus) closeBankKeyboard(this);
+            this.bankSearchFocus = false;
+            if (my < 12 && mx >= 50 && mx < 310) {
+                if (mx < 115 && this.bankActivePage > 0) this.bankActivePage--;
+                else if (mx >= 245 && this.bankActivePage + 1 < pages) this.bankActivePage++;
+            } else if (mx >= 7 && mx < 399 && my >= 28 && my < 232) {
+                const pos = this.bankActivePage * ITEMS_PER_PAGE + Math.floor((my - 28) / 34) * 8 + Math.floor((mx - 7) / 49);
+                if (pos < slots.length) {
+                    this.bankSelectedItemSlot = slots[pos];
+                    this.bankSelectedItem = this.bankItems[slots[pos]];
+                }
+            } else if (this.bankSelectedItemSlot >= 0) {
+                for (const withdraw of [true, false]) {
+                    const rowY = withdraw ? 238 : 263;
+                    const count = available(this, this.bankSelectedItem, withdraw);
+                    if (count < 1 || my < rowY || my > rowY + 11) continue;
+                    for (const button of amountButtons(this, withdraw, count)) {
+                        if (mx < button.x || mx >= button.x + button.width) continue;
+                        if (button.amount === 'x') {
+                            this.bankAmountInput = { id: this.bankSelectedItem, withdraw, text: '', error: '' };
+                            keyboard(this, '', true, x + 54, y + 145);
+                        } else transact(this, this.bankSelectedItem, button.amount, withdraw);
+                    }
+                }
+            }
+        }
+    }
+    const s = this.surface;
+    s.drawBox(x, y, WIDTH, 12, 192);
+    s.drawBoxAlpha(x, y + 12, WIDTH, 312, colours.grey, 160);
+    s.drawString('Bank', x + 1, y + 10, 1, colours.white);
+    if (pages > 1) {
+        if (this.bankActivePage > 0) s.drawString('<prev>', x + 50, y + 10, 1, colours.white);
+        s.drawStringCenter(`Page ${this.bankActivePage + 1}/${pages}`, x + 180, y + 10, 1, colours.white);
+        if (this.bankActivePage + 1 < pages) s.drawString('<next>', x + 245, y + 10, 1, colours.white);
+    }
+    s.drawStringRight('Close window', x + 406, y + 10, 1, colours.white);
+    s.drawString('Number in bank in green', x + 7, y + 24, 1, colours.green);
+    s.drawString('Number held in blue', x + 289, y + 24, 1, colours.cyan);
+    for (let pos = 0; pos < ITEMS_PER_PAGE; pos++) {
+        const slot = slots[this.bankActivePage * ITEMS_PER_PAGE + pos];
+        const sx = x + 7 + (pos % 8) * 49;
+        const sy = y + 28 + Math.floor(pos / 8) * 34;
+        s.drawBoxAlpha(sx, sy, 49, 34, slot !== undefined && slot === this.bankSelectedItemSlot ? colours.red : colours.lightGrey2, 160);
+        s.drawBoxEdge(sx, sy, 50, 35, 0);
+        if (slot === undefined) continue;
+        const id = this.bankItems[slot];
+        s._spriteClipping_from9(sx, sy, 48, 32, this.spriteItem + GameData.itemPicture[id], GameData.itemMask[id], 0, 0, false);
+        s.drawString(String(this.bankItemsCount[slot]), sx + 1, sy + 10, 1, colours.green);
+        s.drawStringRight(String(this.getInventoryCount(id)), sx + 47, sy + 29, 1, colours.cyan);
+    }
+    if (!slots.length) s.drawStringCenter('No matching bank items', x + 204, y + 130, 3, colours.yellow);
+    s.drawLineHoriz(x + 5, y + 256, 398, 0);
+    s.drawLineHoriz(x + 5, y + 280, 398, 0);
+    let visibleSearch = this.bankSearch || '';
+    const cursor = this.bankSearchFocus ? '*' : '';
+    const widthOf = text => {
+        const measured = s.textWidth ? s.textWidth(text, 1) : NaN;
+        return Number.isFinite(measured) ? measured : text.length * 8;
+    };
+    while (visibleSearch.length && widthOf(`Search: ${visibleSearch}${cursor}`) > WIDTH - 4) visibleSearch = visibleSearch.slice(1);
+    s.drawString(`Search: ${visibleSearch}${cursor}`, x + 2, y + 295, 1, colours.white);
+    // updateBankItems appends zero-count inventory choices; only the server's
+    // authoritative prefix consumes bank capacity and contributes bank value.
+    const used = Number.isInteger(this.newBankItemCount) ? this.newBankItemCount : 0;
+    const maximum = Number.isInteger(this.bankItemsMax) ? this.bankItemsMax : '?';
+    s.drawString(`Bank slots: ${used}/${maximum}`, x + 2, y + 316, 1, colours.white);
+    if (this.options && this.options.bankValue && GameData.itemBasePrice) {
+        let total = 0;
+        let safe = true;
+        for (let i = 0; i < used; i++) {
+            const value = GameData.itemBasePrice[this.bankItems[i]] * this.bankItemsCount[i];
+            if (!Number.isSafeInteger(value) || value < 0 || !Number.isSafeInteger(total + value)) { safe = false; break; }
+            total += value;
+        }
+        s.drawStringRight(`Base value: ${safe ? total : 'very large'}`, x + 406, y + 316, 1, colours.yellow);
+    }
+    if (this.bankSelectedItemSlot < 0) {
+        s.drawStringCenter('Select an object to withdraw or deposit', x + 204, y + 248, 3, colours.yellow);
+    } else {
+        for (const withdraw of [true, false]) {
+            const count = available(this, this.bankSelectedItem, withdraw);
+            if (count < 1) continue;
+            const rowY = withdraw ? 238 : 263;
+            // Item name is shown in the grid; leave room for all quantity controls.
+            s.drawString(`${withdraw ? 'Withdraw' : 'Deposit'} ${(GameData.itemName[this.bankSelectedItem] || '').slice(0, 22)}`, x + 2, y + rowY + 10, 1, colours.white);
+            for (const button of amountButtons(this, withdraw, count)) {
+                if (button.amount !== 'x' && button.amount > count) continue;
+                const hover = mx >= button.x && mx < button.x + button.width && my >= rowY && my <= rowY + 11;
+                s.drawString(button.label, x + button.x + 1, y + rowY + 10, 1, hover ? colours.red : colours.white);
+            }
+        }
+    }
+    if (this.bankAmountInput) {
+        const input = this.bankAmountInput;
+        s.drawBox(x + 24, y + 102, 360, 84, 0);
+        s.drawBoxEdge(x + 24, y + 102, 360, 84, colours.white);
+        s.drawStringCenter(`${input.withdraw ? 'Withdraw' : 'Deposit'} how many? (1-${available(this, input.id, input.withdraw)})`, x + 204, y + 122, 1, colours.white);
+        s.drawStringCenter(`${input.text}*`, x + 204, y + 143, 3, colours.cyan);
+        s.drawStringCenter(input.error || 'Enter to confirm', x + 204, y + 155, 1, colours.yellow);
+        s.drawStringCenter('Cancel (Escape)', x + 204, y + 177, 1, colours.white);
+    }
+}
+
+module.exports = { bankActivePage: 0, drawDialogBank, bankKeyPress, resetBankInput };

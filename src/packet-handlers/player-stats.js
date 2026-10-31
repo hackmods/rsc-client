@@ -3,6 +3,8 @@ const serverOpcodes = require('../opcodes/server');
 
 module.exports = {
     [serverOpcodes.PLAYER_STAT_LIST]: function (data) {
+        // A complete list is a login/reconnect baseline, never an XP award.
+        if (this.resetStatusOverlay) this.resetStatusOverlay();
         let offset = 1;
 
         for (let i = 0; i < this.playerStatCurrent.length; i++) {
@@ -19,6 +21,7 @@ module.exports = {
         }
 
         this.playerQuestPoints = Utility.getUnsignedByte(data[offset++]);
+        this.experienceBaselineReady = true;
     },
     [serverOpcodes.PLAYER_STAT_EQUIPMENT_BONUS]: function (data) {
         for (let i = 0; i < this.playerStatEquipment.length; i++) {
@@ -27,12 +30,17 @@ module.exports = {
     },
     [serverOpcodes.PLAYER_STAT_EXPERIENCE_UPDATE]: function (data) {
         const skillIndex = data[1] & 0xff;
+        const oldExperience = this.playerExperience[skillIndex];
         this.playerExperience[skillIndex] = Utility.getUnsignedInt(data, 2);
+        if (this.experienceBaselineReady && this.recordExperienceChange) {
+            this.recordExperienceChange(skillIndex, oldExperience, this.playerExperience[skillIndex]);
+        }
     },
     [serverOpcodes.PLAYER_STAT_UPDATE]: function (data) {
         let offset = 1;
 
         const skillIndex = data[offset++] & 0xff;
+        const oldExperience = this.playerExperience[skillIndex];
 
         this.playerStatCurrent[skillIndex] = Utility.getUnsignedByte(
             data[offset++]
@@ -46,6 +54,9 @@ module.exports = {
             data,
             offset
         );
+        if (this.experienceBaselineReady && this.recordExperienceChange) {
+            this.recordExperienceChange(skillIndex, oldExperience, this.playerExperience[skillIndex]);
+        }
 
         // TODO probably don't need this
         offset += 4;
