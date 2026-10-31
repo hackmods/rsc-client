@@ -63,12 +63,23 @@ function resetBankInput() {
     this.bankSearch = '';
     this.bankSearchFocus = false;
     this.bankAmountInput = null;
+    this.bankPresetsOpen = false;
+    this.bankPresetConfirm = 0;
     this.bankActivePage = 0;
     closeBankKeyboard(this);
 }
 
 function bankKeyPress(keyCode) {
-    if (!this.showDialogBank || (!this.bankAmountInput && !this.bankSearchFocus)) return false;
+    if (!this.showDialogBank) return false;
+    if (this.bankPresetsOpen) {
+        if (keyCode === 27) {
+            if (this.bankPresetConfirm) this.bankPresetConfirm = 0;
+            else this.bankPresetsOpen = false;
+            closeBankKeyboard(this);
+        }
+        return true;
+    }
+    if (!this.bankAmountInput && !this.bankSearchFocus) return false;
     const input = this.bankAmountInput;
     if (keyCode === 27) {
         if (input) this.bankAmountInput = null;
@@ -116,12 +127,33 @@ function drawDialogBank() {
     const my = this.mouseY - y;
     const pages = Math.ceil(slots.length / ITEMS_PER_PAGE);
     if (this.mouseScrollDelta && mx >= 0 && mx < WIDTH && my >= 0 && my < 324) {
-        if (!this.bankAmountInput) this.bankActivePage = Math.max(0, Math.min(Math.max(0, pages - 1), this.bankActivePage + Math.sign(this.mouseScrollDelta)));
+        if (!this.bankAmountInput && !this.bankPresetsOpen) this.bankActivePage = Math.max(0, Math.min(Math.max(0, pages - 1), this.bankActivePage + Math.sign(this.mouseScrollDelta)));
         this.mouseScrollDelta = 0;
     }
     if (this.mouseButtonClick) {
         this.mouseButtonClick = 0;
-        if (this.bankAmountInput) {
+        if (this.bankPresetsOpen) {
+            if (mx < 24 || mx >= 384 || my < 70 || my >= 250 || (my >= 223 && mx < 204)) {
+                if (this.bankPresetConfirm) this.bankPresetConfirm = 0;
+                else this.bankPresetsOpen = false;
+                closeBankKeyboard(this);
+            } else if (this.bankPresetConfirm) {
+                if (my >= 223 && mx >= 204) {
+                    this.sendCommandString(`bankpreset save ${this.bankPresetConfirm}`);
+                    this.bankPresetConfirm = 0;
+                    this.bankPresetsOpen = false;
+                }
+            } else {
+                const slot = Math.floor((my - 125) / 28) + 1;
+                if (slot >= 1 && slot <= 3 && my < 209) {
+                    if (mx >= 180 && mx < 260) this.bankPresetConfirm = slot;
+                    else if (mx >= 270 && mx < 370) {
+                        this.sendCommandString(`bankpreset load ${slot}`);
+                        this.bankPresetsOpen = false;
+                    }
+                }
+            }
+        } else if (this.bankAmountInput) {
             // A touch-accessible cancel area; consume the click without passing
             // it through to the bank controls underneath the modal.
             if (mx < 24 || mx >= 384 || my < 102 || my >= 186 || my >= 158) {
@@ -130,6 +162,11 @@ function drawDialogBank() {
             } else {
                 keyboard(this, this.bankAmountInput.text, true, x + 54, y + 145);
             }
+        } else if (mx >= 340 && mx < WIDTH && my >= 280 && my < 300) {
+            this.bankSearchFocus = false;
+            closeBankKeyboard(this);
+            this.bankPresetsOpen = true;
+            this.bankPresetConfirm = 0;
         } else if (mx >= 0 && mx < WIDTH && my >= 280 && my < 300) {
             this.bankSearchFocus = true;
             keyboard(this, this.bankSearch || '', false, x + 48, y + 280);
@@ -200,8 +237,9 @@ function drawDialogBank() {
         const measured = s.textWidth ? s.textWidth(text, 1) : NaN;
         return Number.isFinite(measured) ? measured : text.length * 8;
     };
-    while (visibleSearch.length && widthOf(`Search: ${visibleSearch}${cursor}`) > WIDTH - 4) visibleSearch = visibleSearch.slice(1);
+    while (visibleSearch.length && widthOf(`Search: ${visibleSearch}${cursor}`) > 330) visibleSearch = visibleSearch.slice(1);
     s.drawString(`Search: ${visibleSearch}${cursor}`, x + 2, y + 295, 1, colours.white);
+    s.drawStringRight('Presets', x + 404, y + 295, 1, colours.yellow);
     // updateBankItems appends zero-count inventory choices; only the server's
     // authoritative prefix consumes bank capacity and contributes bank value.
     const used = Number.isInteger(this.newBankItemCount) ? this.newBankItemCount : 0;
@@ -232,6 +270,26 @@ function drawDialogBank() {
                 s.drawString(button.label, x + button.x + 1, y + rowY + 10, 1, hover ? colours.red : colours.white);
             }
         }
+    }
+    if (this.bankPresetsOpen) {
+        s.drawBox(x + 24, y + 70, 360, 180, 0);
+        s.drawBoxEdge(x + 24, y + 70, 360, 180, colours.white);
+        s.drawStringCenter('Bank presets', x + 204, y + 91, 3, colours.white);
+        if (this.bankPresetConfirm) {
+            s.drawStringCenter(`Save current inventory to preset ${this.bankPresetConfirm}?`, x + 204, y + 127, 1, colours.yellow);
+            s.drawStringCenter('This replaces any saved preset in that slot.', x + 204, y + 148, 1, colours.white);
+            s.drawStringCenter('The server will report the result.', x + 204, y + 175, 1, colours.white);
+            s.drawStringCenter('Confirm save', x + 290, y + 240, 1, colours.yellow);
+        } else {
+            s.drawStringCenter('Save or restore an inventory layout.', x + 204, y + 113, 1, colours.white);
+            for (let slot = 1; slot <= 3; slot++) {
+                const rowY = y + 144 + (slot - 1) * 28;
+                s.drawString(`Preset ${slot}`, x + 55, rowY, 1, colours.white);
+                s.drawString('Save', x + 195, rowY, 1, colours.yellow);
+                s.drawString('Load', x + 290, rowY, 1, colours.yellow);
+            }
+        }
+        s.drawStringCenter(this.bankPresetConfirm ? 'Cancel (Escape)' : 'Close (Escape)', x + 117, y + 240, 1, colours.white);
     }
     if (this.bankAmountInput) {
         const input = this.bankAmountInput;

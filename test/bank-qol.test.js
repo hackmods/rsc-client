@@ -173,3 +173,36 @@ test('wheel pages only under bank, consumes delta, preserves search, and clamps 
     c.mouseScrollDelta = 1; c.drawDialogBank();
     assert.equal(c.bankActivePage, 0); assert.equal(c.mouseScrollDelta, 0);
 });
+test('preset slots load through command channel and every save requires explicit overwrite confirmation', () => {
+    const { c, packets, draws } = client(); const commands = [];
+    c.sendCommandString = command => commands.push(command);
+    for (let slot = 1; slot <= 3; slot++) {
+        click(c, 370, 290); assert.equal(c.bankPresetsOpen, true);
+        click(c, 200, 135 + (slot - 1) * 28);
+        assert.equal(c.bankPresetConfirm, slot); assert.equal(commands.length, (slot - 1) * 2);
+        c.bankKeyPress(13); assert.equal(commands.length, (slot - 1) * 2);
+        click(c, 290, 235); assert.equal(commands.at(-1), `bankpreset save ${slot}`);
+        click(c, 370, 290); click(c, 290, 135 + (slot - 1) * 28);
+        assert.equal(commands.at(-1), `bankpreset load ${slot}`);
+    }
+    assert.equal(packets.length, 0);
+    assert.ok(draws.some(d => d[1] === 'This replaces any saved preset in that slot.'));
+    assert.ok(!draws.some(d => /saved successfully|loaded successfully/i.test(String(d[1]))));
+});
+test('preset modal owns typing, wheel and clicks; Escape and mobile cancel never save', () => {
+    const { c, packets } = client(); const commands = []; let closed = 0;
+    c.sendCommandString = command => commands.push(command);
+    c.options = { mobile: true }; c.mobileInputEl = {}; c.closeKeyboard = () => closed++;
+    c.bankSearch = 'coin'; c.bankSearchFocus = true;
+    click(c, 370, 290); assert.equal(c.bankSearchFocus, false); assert.equal(closed, 1);
+    type(c, 'anything'); assert.equal(c.bankSearch, 'coin');
+    c.mouseScrollDelta = 1; c.drawDialogBank(); assert.equal(c.mouseScrollDelta, 0);
+    click(c, 200, 135); c.bankKeyPress(27); assert.equal(c.bankPresetConfirm, 0);
+    assert.equal(c.bankPresetsOpen, true);
+    click(c, 200, 135); click(c, 100, 235); assert.equal(c.bankPresetConfirm, 0);
+    click(c, 15, 35); assert.equal(c.bankPresetsOpen, false); assert.equal(c.bankSelectedItem, -2);
+    assert.equal(commands.length, 0); assert.equal(packets.length, 0);
+    click(c, 370, 290); c.bankKeyPress(27); assert.equal(c.bankPresetsOpen, false);
+    click(c, 370, 290); click(c, 200, 135); c.resetBankInput();
+    assert.equal(c.bankPresetsOpen, false); assert.equal(c.bankPresetConfirm, 0);
+});
