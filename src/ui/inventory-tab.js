@@ -2,16 +2,22 @@ const GameData = require('../game-data');
 const colours = require('./_colours');
 const { compactAmount, formatWithCommas } = require('../lib/format-amount');
 const { addOfferMenus } = require('./offer-menus');
+const { uiScale } = require('../lib/ui-scale');
 
 const MENU_WIDTH = 245;
 
-const SLOT_WIDTH = 49;
-const SLOT_HEIGHT = 34;
-
-const WIDTH = SLOT_WIDTH * 5;
-const HEIGHT = SLOT_HEIGHT * 6;
+const BASE_SLOT_WIDTH = 49;
+const BASE_SLOT_HEIGHT = 34;
+const BASE_COLS = 5;
+const BASE_ROWS = 6;
 
 function drawUiTabInventory(noMenus) {
+    const scale = uiScale(this);
+    const SLOT_WIDTH = Math.round(BASE_SLOT_WIDTH * scale);
+    const SLOT_HEIGHT = Math.round(BASE_SLOT_HEIGHT * scale);
+    const WIDTH = SLOT_WIDTH * BASE_COLS;
+    const HEIGHT = SLOT_HEIGHT * BASE_ROWS;
+
     let uiX = this.gameWidth - WIDTH - 3;
     let uiY = 36;
 
@@ -32,8 +38,8 @@ function drawUiTabInventory(noMenus) {
     this.uiOpenHeight = HEIGHT;
 
     for (let i = 0; i < this.inventoryMaxItemCount; i++) {
-        const slotX = uiX + (i % 5) * SLOT_WIDTH;
-        const slotY = uiY + ((i / 5) | 0) * SLOT_HEIGHT;
+        const slotX = uiX + (i % BASE_COLS) * SLOT_WIDTH;
+        const slotY = uiY + ((i / BASE_COLS) | 0) * SLOT_HEIGHT;
 
         if (i < this.inventoryItemsCount && this.inventoryEquipped[i] === 1) {
             this.surface.drawBoxAlpha(
@@ -88,26 +94,25 @@ function drawUiTabInventory(noMenus) {
     }
 
     // row and column lines
-    for (let i = 1; i <= 4; i++) {
+    for (let i = 1; i <= BASE_COLS - 1; i++) {
         this.surface.drawLineVert(
             uiX + i * SLOT_WIDTH,
             uiY,
-            ((this.inventoryMaxItemCount / 5) | 0) * SLOT_HEIGHT,
+            BASE_ROWS * SLOT_HEIGHT,
             colours.black
         );
     }
 
-    for (let i = 1; i <= ((this.inventoryMaxItemCount / 5) | 0) - 1; i++) {
+    for (let i = 1; i <= BASE_ROWS - 1; i++) {
         this.surface.drawLineHoriz(
             uiX,
             uiY + i * SLOT_HEIGHT,
-            245,
+            Math.round(MENU_WIDTH * scale),
             colours.black
         );
     }
 
-    // A footer keeps the occupancy counter clear of every item slot.
-    const footerY = uiY + ((this.inventoryMaxItemCount / 5) | 0) * SLOT_HEIGHT + 12;
+    const footerY = uiY + BASE_ROWS * SLOT_HEIGHT + Math.round(12 * scale);
     if (this.options.inventoryCount) {
         this.surface.drawString(`${this.inventoryItemsCount}/${this.inventoryMaxItemCount}`,
             uiX + 1, footerY, 1, colours.white);
@@ -124,10 +129,10 @@ function drawUiTabInventory(noMenus) {
         mouseX >= 0 &&
         mouseY >= 0 &&
         mouseX < WIDTH &&
-        mouseY < ((this.inventoryMaxItemCount / 5) | 0) * SLOT_HEIGHT
+        mouseY < BASE_ROWS * SLOT_HEIGHT
     ) {
         const itemIndex =
-            ((mouseX / SLOT_WIDTH) | 0) + ((mouseY / SLOT_HEIGHT) | 0) * 5;
+            ((mouseX / SLOT_WIDTH) | 0) + ((mouseY / SLOT_HEIGHT) | 0) * BASE_COLS;
 
         if (itemIndex < this.inventoryItemsCount) {
             const itemID = this.inventoryItemId[itemIndex];

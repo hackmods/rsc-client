@@ -87,7 +87,12 @@ class GameShell {
             bankUnstackableWithdraw: false,
             transactionMenus: false,
             holdToBuy: true,
-            groundItemText: false,
+            bankExpand: true,
+            bankScroll: true,
+            uiScale: 1,
+            touchMenuDelay: 500,
+            touchPinch: true,
+            touchVerticalDrag: true,
             mobile: false
         };
 
@@ -170,7 +175,10 @@ class GameShell {
 
                         this.mousePressed(e);
                         this.mouseReleased(e);
-                    }, 500);
+                    }, this.options.touchMenuDelay ?? 500);
+                } else if (e.touches.length >= 2 && this.options.touchPinch) {
+                    // Pinch zoom is not wired in the web touch path yet; option
+                    // exists for parity with Plus and future multi-touch zoom.
                 } else {
                     // scroll
                 }

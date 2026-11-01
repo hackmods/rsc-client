@@ -52,6 +52,9 @@ class mudclient extends GameConnection {
         // attach methods and properties from files in ./ui/
         applyUIComponents(this);
 
+        const { uiScale: readUiScale } = require('./lib/ui-scale');
+        this.getUiScale = () => readUiScale(this);
+
         // { opcode: function handler (data) { } }
         this.packetHandlers = getPacketHandlers(this);
 

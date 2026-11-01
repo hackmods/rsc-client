@@ -7,15 +7,20 @@ data.itemName = ['Bronze sword', 'Gold coins', 'Iron sword'];
 data.itemStackable = [1, 0, 1];
 data.itemPicture = [0, 1, 2];
 data.itemMask = [0, 0, 0];
-function client() {
+function client(overrides = {}) {
     const draws = [], packets = [];
     let packet;
+    const options = {
+        bankExpand: false,
+        bankScroll: false,
+        ...(overrides.options || {})
+    };
     const c = Object.assign({}, bank, {
-        gameWidth: 800, gameHeight: 600, showDialogBank: true,
-        options: {},
+        gameWidth: 512, gameHeight: 346, showDialogBank: true,
+        options,
         bankItems: [0, 1, 2], bankItemsCount: [20, 100000, 3], bankItemCount: 3,
         bankSelectedItem: -2, bankSelectedItemSlot: -1,
-        mouseX: 0, mouseY: 0, mouseButtonClick: 0, spriteItem: 0,
+        mouseX: 0, mouseY: 0, mouseButtonClick: 0, mouseScrollDelta: 0, spriteItem: 0,
         getInventoryCount: id => id === 1 ? 100000 : 8,
         surface: new Proxy({}, { get: (_, method) => (...args) => draws.push([method, ...args]) }),
         packetStream: {
@@ -23,12 +28,14 @@ function client() {
             putShort: n => packet.push(n), putInt: n => packet.push(n),
             sendPacket: () => packets.push(packet)
         }
-    });
+    }, overrides);
+    c.options = options;
     return { c, draws, packets };
 }
 function click(c, x, y) {
-    c.mouseX = (c.gameWidth / 2 | 0) - 204 + x;
-    c.mouseY = (c.gameHeight / 2 | 0) - 167 + y;
+    const layout = bank.bankLayout(c);
+    c.mouseX = (c.gameWidth / 2 | 0) - (layout.width / 2 | 0) + x;
+    c.mouseY = (c.gameHeight / 2 | 0) - (layout.height / 2 | 0) + y;
     c.mouseButtonClick = 1; c.drawDialogBank();
 }
 function type(c, text) { for (const char of text) assert.equal(c.bankKeyPress(char.charCodeAt(0)), true); }
@@ -81,7 +88,7 @@ test('nonstackable withdrawals remain one; typing is consumed only while bank in
 });
 test('bankUnstackableWithdraw allows All to withdraw more than one nonstackable', () => {
     const { c, packets } = client();
-    c.options = { bankUnstackableWithdraw: true };
+    c.options = { bankExpand: false, bankScroll: false, bankUnstackableWithdraw: true };
     c.bankItems = [0];
     c.bankItemsCount = [5];
     c.bankItemCount = 1;
@@ -94,7 +101,7 @@ test('mobile focus uses existing keyboard and cancel/reset clean it up without t
     const { c, packets } = client();
     const opened = [];
     let closed = 0;
-    c.options = { mobile: true };
+    c.options = { bankExpand: false, bankScroll: false, mobile: true };
     c.mobileInputEl = {};
     c.openKeyboard = (...args) => opened.push(args);
     c.closeKeyboard = () => closed++;
@@ -174,6 +181,7 @@ test('wheel pages only under bank, consumes delta, preserves search, and clamps 
     c.bankSearch = 'coin';
     c.mouseX = 0; c.mouseY = 0; c.mouseScrollDelta = 3; c.drawDialogBank();
     assert.equal(c.bankActivePage, 0); assert.equal(c.mouseScrollDelta, 3);
+    const layout = bank.bankLayout(c);
     c.mouseX = c.gameWidth / 2; c.mouseY = c.gameHeight / 2;
     c.drawDialogBank(); assert.equal(c.bankActivePage, 1); assert.equal(c.mouseScrollDelta, 0);
     assert.equal(c.bankSearch, 'coin');
@@ -184,6 +192,34 @@ test('wheel pages only under bank, consumes delta, preserves search, and clamps 
     c.bankAmountInput = { id: 1, withdraw: true, text: '', error: '' };
     c.mouseScrollDelta = 1; c.drawDialogBank();
     assert.equal(c.bankActivePage, 0); assert.equal(c.mouseScrollDelta, 0);
+});
+test('bank expand grows visible rows with height; 334 canvas clamps to six rows', () => {
+    const tall = client({ gameHeight: 600, options: { bankExpand: true, bankScroll: false } }).c;
+    assert.equal(bank.bankVisibleRows(tall), 12);
+    assert.equal(bank.bankLayout(tall).itemsPerPage, 96);
+    const short = client({ gameHeight: 334, options: { bankExpand: true, bankScroll: false } }).c;
+    assert.equal(bank.bankVisibleRows(short), 6);
+    assert.equal(bank.bankLayout(short).itemsPerPage, 48);
+});
+test('bank scroll clamps row and wheel adjusts scroll instead of paging', () => {
+    const { c } = client({
+        gameHeight: 600,
+        options: { bankExpand: true, bankScroll: true }
+    });
+    c.bankItems = Array.from({ length: 120 }, (_, id) => id);
+    c.bankItemsCount = Array(120).fill(1);
+    c.bankItemCount = 120;
+    c.bankScrollRow = 999;
+    c.drawDialogBank();
+    const layout = bank.bankLayout(c);
+    const totalRows = Math.ceil(120 / layout.visibleColumns);
+    assert.equal(c.bankScrollRow, totalRows - layout.visibleRows);
+    c.mouseScrollDelta = -50;
+    c.mouseX = c.gameWidth / 2;
+    c.mouseY = c.gameHeight / 2;
+    c.drawDialogBank();
+    assert.equal(c.bankScrollRow, 0);
+    assert.equal(c.bankActivePage, 0);
 });
 test('preset slots load through command channel and every save requires explicit overwrite confirmation', () => {
     const { c, packets, draws } = client(); const commands = [];
@@ -204,7 +240,7 @@ test('preset slots load through command channel and every save requires explicit
 test('preset modal owns typing, wheel and clicks; Escape and mobile cancel never save', () => {
     const { c, packets } = client(); const commands = []; let closed = 0;
     c.sendCommandString = command => commands.push(command);
-    c.options = { mobile: true }; c.mobileInputEl = {}; c.closeKeyboard = () => closed++;
+    c.options = { bankExpand: false, bankScroll: false, mobile: true }; c.mobileInputEl = {}; c.closeKeyboard = () => closed++;
     c.bankSearch = 'coin'; c.bankSearchFocus = true;
     click(c, 370, 290); assert.equal(c.bankSearchFocus, false); assert.equal(closed, 1);
     type(c, 'anything'); assert.equal(c.bankSearch, 'coin');

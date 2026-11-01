@@ -9,6 +9,8 @@ const LINE_BREAK = 15;
 const INTERFACE_OPTS = [
     ['bankMenus', 'Bank menus'],
     ['bankUnstackableWithdraw', 'Unstackable withdraw all'],
+    ['bankExpand', 'Bank expand'],
+    ['bankScroll', 'Bank scrollbar'],
     ['transactionMenus', 'Trade quantity menus'],
     ['holdToBuy', 'Hold shop buy/sell'],
     ['groundItemText', 'Ground item labels'],
@@ -20,10 +22,16 @@ const INTERFACE_OPTS = [
     ['combatStyleAlways', 'Combat style always'],
     ['compassMenu', 'Compass menu'],
     ['offerX', 'Offer X / All'],
-    ['lastOfferX', 'Last offer amount']
+    ['lastOfferX', 'Last offer amount'],
+    ['touchPinch', 'Touch pinch zoom'],
+    ['touchVerticalDrag', 'Touch vertical drag']
 ];
 
-const INTERFACE_BLOCK = INTERFACE_OPTS.length * LINE_BREAK + 20;
+const UI_SCALE_STEPS = [1, 1.5, 2];
+const TOUCH_MENU_DELAY_STEPS = [300, 500, 750];
+
+const INTERFACE_BLOCK =
+    INTERFACE_OPTS.length * LINE_BREAK + LINE_BREAK * 2 + 25;
 const HEIGHT = 265 + INTERFACE_BLOCK;
 
 function isInTutorialIsland() {
@@ -311,6 +319,23 @@ function drawUiTabOptions(noMenus) {
         y += LINE_BREAK;
     }
 
+    this.surface.drawString(
+        `UI scale: @yel@${this.options.uiScale || 1}x`,
+        x,
+        y,
+        1,
+        colours.white
+    );
+    y += LINE_BREAK;
+    this.surface.drawString(
+        `Touch menu delay: @yel@${this.options.touchMenuDelay ?? 500}ms`,
+        x,
+        y,
+        1,
+        colours.white
+    );
+    y += LINE_BREAK;
+
     y += 5;
 
     if (showSkipTutorial) {
@@ -537,6 +562,40 @@ function drawUiTabOptions(noMenus) {
 
             y += LINE_BREAK;
         }
+
+        if (
+            this.mouseX > x &&
+            this.mouseX < x + WIDTH &&
+            this.mouseY > y - 12 &&
+            this.mouseY < y + 4 &&
+            this.mouseButtonClick === 1
+        ) {
+            const current = this.options.uiScale || 1;
+            const idx = UI_SCALE_STEPS.indexOf(current);
+            this.options.uiScale = UI_SCALE_STEPS[(idx + 1) % UI_SCALE_STEPS.length];
+            this.mouseButtonClick = 0;
+            if (typeof this.syncClassicQol === 'function') {
+                this.syncClassicQol();
+            }
+        }
+
+        y += LINE_BREAK;
+
+        if (
+            this.mouseX > x &&
+            this.mouseX < x + WIDTH &&
+            this.mouseY > y - 12 &&
+            this.mouseY < y + 4 &&
+            this.mouseButtonClick === 1
+        ) {
+            const current = this.options.touchMenuDelay ?? 500;
+            const idx = TOUCH_MENU_DELAY_STEPS.indexOf(current);
+            this.options.touchMenuDelay =
+                TOUCH_MENU_DELAY_STEPS[(idx + 1) % TOUCH_MENU_DELAY_STEPS.length];
+            this.mouseButtonClick = 0;
+        }
+
+        y += LINE_BREAK;
 
         y += 5;
 
