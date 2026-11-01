@@ -113,6 +113,13 @@ function closeBankKeyboard(client) {
     if (client.options && client.options.mobile && client.mobileInputEl && client.closeKeyboard) client.closeKeyboard();
 }
 
+function openBankAmountKeyboard(client) {
+    if (!client || !client.bankAmountInput) return;
+    const x = ((client.gameWidth / 2) | 0) - WIDTH / 2;
+    const y = ((client.gameHeight / 2) | 0) - HEIGHT / 2;
+    keyboard(client, client.bankAmountInput.text || '', true, x + 54, y + 145);
+}
+
 function resetBankInput() {
     this.bankSearch = '';
     this.bankSearchFocus = false;
@@ -384,5 +391,6 @@ module.exports = {
     resetBankInput,
     available,
     transact,
-    populateBankOfferMenus
+    populateBankOfferMenus,
+    openBankAmountKeyboard
 };

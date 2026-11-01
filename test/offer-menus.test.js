@@ -34,14 +34,20 @@ test('addOfferMenus respects offerX and lastX', () => {
 });
 
 test('handleOfferMenuClick opens bank amount prompt for X', () => {
+    const opened = [];
     const c = {
         menuType: [601],
         menuIndex: [5],
         menuTargetIndex: [-20],
-        bankAmountInput: null
+        bankAmountInput: null,
+        gameWidth: 512,
+        gameHeight: 346,
+        options: { mobile: true },
+        openKeyboard: (...args) => opened.push(args)
     };
     assert.equal(handleOfferMenuClick(c, 0), true);
     assert.deepEqual(c.bankAmountInput, { id: 5, withdraw: true, text: '', error: '' });
+    assert.equal(opened[0][0], 'number');
 });
 
 test('handleOfferMenuClick performs bank transact', () => {

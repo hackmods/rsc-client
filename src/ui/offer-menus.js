@@ -91,6 +91,10 @@ function handleOfferMenuClick(client, index) {
         const withdraw = menuType === MENU_BANK_WITHDRAW;
         if (amount < 0) {
             client.bankAmountInput = { id: itemId, withdraw, text: '', error: '' };
+            const { openBankAmountKeyboard } = require('./bank-dialog');
+            if (typeof openBankAmountKeyboard === 'function') {
+                openBankAmountKeyboard(client);
+            }
             return true;
         }
         const { transact } = require('./bank-dialog');
@@ -109,6 +113,10 @@ function handleOfferMenuClick(client, index) {
                 text: '',
                 error: ''
             };
+            const { openTradeAmountKeyboard } = require('./trade-dialog');
+            if (typeof openTradeAmountKeyboard === 'function') {
+                openTradeAmountKeyboard(client);
+            }
             return true;
         }
         const { tradeOfferItem } = require('./trade-dialog');
@@ -126,6 +134,10 @@ function handleOfferMenuClick(client, index) {
                 text: '',
                 error: ''
             };
+            const { openTradeAmountKeyboard } = require('./trade-dialog');
+            if (typeof openTradeAmountKeyboard === 'function') {
+                openTradeAmountKeyboard(client);
+            }
             return true;
         }
         const { tradeRemoveItem } = require('./trade-dialog');

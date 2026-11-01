@@ -724,11 +724,25 @@ function drawDialogTrade() {
     }
 }
 
+function openTradeAmountKeyboard(client) {
+    if (!client || !client.tradeAmountInput) return;
+    if (!(client.options && client.options.mobile && client.openKeyboard)) return;
+    const input = client.tradeAmountInput;
+    client.lastMobileInput = input.text || '';
+    client.openKeyboard('number', input.text || '', 5, {
+        left: `${DIALOG_X + 114}px`,
+        top: `${DIALOG_Y + 100}px`,
+        width: '240px',
+        height: '20px'
+    });
+}
+
 module.exports = {
     drawDialogTrade,
     showDialogTrade: false,
     tradeOfferItem,
     tradeRemoveItem,
     tradeKeyPress,
-    populateTradeOfferMenus
+    populateTradeOfferMenus,
+    openTradeAmountKeyboard
 };

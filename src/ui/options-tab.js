@@ -529,6 +529,10 @@ function drawUiTabOptions(noMenus) {
                 this.mouseButtonClick === 1
             ) {
                 this.options[key] = !this.options[key];
+                this.mouseButtonClick = 0;
+                if (typeof this.syncClassicQol === 'function') {
+                    this.syncClassicQol();
+                }
             }
 
             y += LINE_BREAK;
