@@ -1,5 +1,7 @@
 const GameData = require('../game-data');
 const colours = require('./_colours');
+const { compactAmount, formatWithCommas } = require('../lib/format-amount');
+const { addOfferMenus } = require('./offer-menus');
 
 const MENU_WIDTH = 245;
 
@@ -8,13 +10,6 @@ const SLOT_HEIGHT = 34;
 
 const WIDTH = SLOT_WIDTH * 5;
 const HEIGHT = SLOT_HEIGHT * 6;
-
-function compactAmount(amount) {
-    const divisor = amount >= 1000000 ? 1000000 : amount >= 1000 ? 1000 : 0;
-    if (!divisor) return amount.toString();
-    // Truncate rather than round so a label never promises more items.
-    return `${Math.floor(amount / divisor * 10) / 10}${divisor === 1000000 ? 'M' : 'K'}`;
-}
 
 function drawUiTabInventory(noMenus) {
     let uiX = this.gameWidth - WIDTH - 3;
@@ -141,10 +136,29 @@ function drawUiTabInventory(noMenus) {
             if (this.options.compactAmounts && !this.showRightClickMenu &&
                 GameData.itemStackable[itemID] === 0 &&
                 this.inventoryItemStackCount[itemIndex] >= 1000) {
-                const exact = this.inventoryItemStackCount[itemIndex].toString()
-                    .replace(/\B(?=(\d{3})+(?!\d))/g, ',');
+                const exact = formatWithCommas(this.inventoryItemStackCount[itemIndex]);
                 this.surface.drawStringRight(`Amount: ${exact}`, uiX + WIDTH - 2,
                     footerY, 1, colours.yellow);
+            }
+
+            if (
+                this.showDialogBank &&
+                this.options.bankMenus &&
+                !this.showRightClickMenu &&
+                !this.bankAmountInput &&
+                !this.bankPresetsOpen
+            ) {
+                const itemAmount = this.getInventoryCount(itemID);
+                addOfferMenus(
+                    this,
+                    'Deposit',
+                    602,
+                    itemID,
+                    itemAmount,
+                    itemName,
+                    this.bankLastDepositX || 0
+                );
+                return;
             }
 
             if (this.selectedSpell >= 0) {

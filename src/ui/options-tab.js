@@ -4,8 +4,27 @@ const colours = require('./_colours');
 const MENU_WIDTH = 245;
 
 const WIDTH = 196;
-const HEIGHT = 265;
 const LINE_BREAK = 15;
+
+const INTERFACE_OPTS = [
+    ['bankMenus', 'Bank menus'],
+    ['bankUnstackableWithdraw', 'Unstackable withdraw all'],
+    ['transactionMenus', 'Trade quantity menus'],
+    ['holdToBuy', 'Hold shop buy/sell'],
+    ['groundItemText', 'Ground item labels'],
+    ['experienceDrops', 'Experience drops'],
+    ['statusBars', 'Status bars'],
+    ['inventoryCount', 'Inventory count'],
+    ['compactAmounts', 'Compact amounts'],
+    ['bankValue', 'Bank value'],
+    ['combatStyleAlways', 'Combat style always'],
+    ['compassMenu', 'Compass menu'],
+    ['offerX', 'Offer X / All'],
+    ['lastOfferX', 'Last offer amount']
+];
+
+const INTERFACE_BLOCK = INTERFACE_OPTS.length * LINE_BREAK + 20;
+const HEIGHT = 265 + INTERFACE_BLOCK;
 
 function isInTutorialIsland() {
     const x = this.regionX + this.localRegionX;
@@ -278,6 +297,22 @@ function drawUiTabOptions(noMenus) {
 
     y += LINE_BREAK + 5;
 
+    this.surface.drawString('Interface - click to toggle', x, y, 1, colours.black);
+    y += LINE_BREAK;
+
+    for (const [key, label] of INTERFACE_OPTS) {
+        this.surface.drawString(
+            `${label}: ` + (this.options[key] ? '@gre@on' : '@red@off'),
+            x,
+            y,
+            1,
+            colours.white
+        );
+        y += LINE_BREAK;
+    }
+
+    y += 5;
+
     if (showSkipTutorial) {
         let skipColour = colours.white;
 
@@ -482,6 +517,24 @@ function drawUiTabOptions(noMenus) {
         }
 
         y += LINE_BREAK + 5;
+
+        y += LINE_BREAK;
+
+        for (const [key] of INTERFACE_OPTS) {
+            if (
+                this.mouseX > x &&
+                this.mouseX < x + WIDTH &&
+                this.mouseY > y - 12 &&
+                this.mouseY < y + 4 &&
+                this.mouseButtonClick === 1
+            ) {
+                this.options[key] = !this.options[key];
+            }
+
+            y += LINE_BREAK;
+        }
+
+        y += 5;
 
         if (showSkipTutorial) {
             if (

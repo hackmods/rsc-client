@@ -1,6 +1,7 @@
 const GameData = require('../game-data');
 const clientOpcodes = require('../opcodes/client');
 const colours = require('./_colours');
+const { compactAmount } = require('../lib/format-amount');
 const WIDTH = 408;
 const HEIGHT = 334;
 const ITEMS_PER_PAGE = 48;
@@ -30,10 +31,63 @@ function available(client, id, withdraw) {
     if (!withdraw) return Math.min(65535, client.getInventoryCount(id));
     for (let i = 0; i < client.bankItemCount; i++) {
         if (client.bankItems[i] === id) {
-            return Math.min(GameData.itemStackable[id] === 1 ? 1 : 65535, client.bankItemsCount[i]);
+            let max = client.bankItemsCount[i];
+            if (
+                !(client.options && client.options.bankUnstackableWithdraw) &&
+                GameData.itemStackable[id] === 1
+            ) {
+                max = Math.min(1, max);
+            }
+            return Math.min(65535, max);
         }
     }
     return 0;
+}
+
+function populateBankOfferMenus(client) {
+    if (
+        !client.options.bankMenus ||
+        client.showRightClickMenu ||
+        client.bankAmountInput ||
+        client.bankPresetsOpen
+    ) {
+        return;
+    }
+
+    const slots = bankView(client);
+    const x = ((client.gameWidth / 2) | 0) - WIDTH / 2;
+    const y = ((client.gameHeight / 2) | 0) - HEIGHT / 2;
+    const mx = client.mouseX - x;
+    const my = client.mouseY - y;
+
+    if (mx < 7 || mx >= 399 || my < 28 || my >= 232) {
+        return;
+    }
+
+    const pos =
+        client.bankActivePage * ITEMS_PER_PAGE +
+        Math.floor((my - 28) / 34) * 8 +
+        Math.floor((mx - 7) / 49);
+
+    if (pos >= slots.length) {
+        return;
+    }
+
+    const slot = slots[pos];
+    const id = client.bankItems[slot];
+    const amount = client.bankItemsCount[slot];
+    const itemName = `@lre@${GameData.itemName[id] || ''}`;
+    const { addOfferMenus } = require('./offer-menus');
+
+    addOfferMenus(
+        client,
+        'Withdraw',
+        601,
+        id,
+        amount,
+        itemName,
+        client.bankLastWithdrawX || 0
+    );
 }
 
 function transact(client, id, amount, withdraw) {
@@ -131,6 +185,7 @@ function drawDialogBank() {
         this.mouseScrollDelta = 0;
     }
     if (this.mouseButtonClick) {
+        const hadClick = this.mouseButtonClick;
         this.mouseButtonClick = 0;
         if (this.bankPresetsOpen) {
             if (mx < 24 || mx >= 384 || my < 70 || my >= 250 || (my >= 223 && mx < 204)) {
@@ -184,9 +239,21 @@ function drawDialogBank() {
                 else if (mx >= 245 && this.bankActivePage + 1 < pages) this.bankActivePage++;
             } else if (mx >= 7 && mx < 399 && my >= 28 && my < 232) {
                 const pos = this.bankActivePage * ITEMS_PER_PAGE + Math.floor((my - 28) / 34) * 8 + Math.floor((mx - 7) / 49);
-                if (pos < slots.length) {
+                const clickedSlot =
+                    this.options && this.options.bankMenus
+                        ? !this.showRightClickMenu && hadClick === 1
+                        : hadClick !== 0;
+                if (pos < slots.length && clickedSlot && !this.bankAmountInput) {
+                    const selectedId = this.bankItems[slots[pos]];
+                    if (
+                        this.options &&
+                        this.options.bankMenus &&
+                        this.bankSelectedItem !== selectedId
+                    ) {
+                        this.mouseButtonClick = 0;
+                    }
                     this.bankSelectedItemSlot = slots[pos];
-                    this.bankSelectedItem = this.bankItems[slots[pos]];
+                    this.bankSelectedItem = selectedId;
                 }
             } else if (this.bankSelectedItemSlot >= 0) {
                 for (const withdraw of [true, false]) {
@@ -225,8 +292,16 @@ function drawDialogBank() {
         if (slot === undefined) continue;
         const id = this.bankItems[slot];
         s._spriteClipping_from9(sx, sy, 48, 32, this.spriteItem + GameData.itemPicture[id], GameData.itemMask[id], 0, 0, false);
-        s.drawString(String(this.bankItemsCount[slot]), sx + 1, sy + 10, 1, colours.green);
-        s.drawStringRight(String(this.getInventoryCount(id)), sx + 47, sy + 29, 1, colours.cyan);
+        const bankLabel =
+            this.options && this.options.compactAmounts
+                ? compactAmount(this.bankItemsCount[slot])
+                : String(this.bankItemsCount[slot]);
+        const invLabel =
+            this.options && this.options.compactAmounts
+                ? compactAmount(this.getInventoryCount(id))
+                : String(this.getInventoryCount(id));
+        s.drawString(bankLabel, sx + 1, sy + 10, 1, colours.green);
+        s.drawStringRight(invLabel, sx + 47, sy + 29, 1, colours.cyan);
     }
     if (!slots.length) s.drawStringCenter('No matching bank items', x + 204, y + 130, 3, colours.yellow);
     s.drawLineHoriz(x + 5, y + 256, 398, 0);
@@ -302,4 +377,12 @@ function drawDialogBank() {
     }
 }
 
-module.exports = { bankActivePage: 0, drawDialogBank, bankKeyPress, resetBankInput };
+module.exports = {
+    bankActivePage: 0,
+    drawDialogBank,
+    bankKeyPress,
+    resetBankInput,
+    available,
+    transact,
+    populateBankOfferMenus
+};

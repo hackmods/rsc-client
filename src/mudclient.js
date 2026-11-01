@@ -637,6 +637,21 @@ class mudclient extends GameConnection {
             this.drawDialogWildWarn();
         } else if (this.showDialogBank && this.combatTimeout === 0) {
             this.drawDialogBank();
+
+            if (this.options.bankMenus) {
+                if (!this.showRightClickMenu) {
+                    this.menuItemsCount = 0;
+                }
+
+                this.populateBankOfferMenus();
+                this.drawUiTabInventory(true);
+
+                if (this.showRightClickMenu) {
+                    this.drawRightClickMenu();
+                } else {
+                    this.createTopMouseMenu();
+                }
+            }
         } else if (this.showDialogShop && this.combatTimeout === 0) {
             this.drawDialogShop();
         } else if (this.showDialogExchange && this.combatTimeout === 0) {
@@ -645,6 +660,20 @@ class mudclient extends GameConnection {
             this.drawDialogTradeConfirm();
         } else if (this.showDialogTrade) {
             this.drawDialogTrade();
+
+            if (this.options.transactionMenus) {
+                if (!this.showRightClickMenu) {
+                    this.menuItemsCount = 0;
+                }
+
+                this.populateTradeOfferMenus();
+
+                if (this.showRightClickMenu) {
+                    this.drawRightClickMenu();
+                } else {
+                    this.createTopMouseMenu();
+                }
+            }
         } else if (this.showDialogDuelConfirm) {
             this.drawDialogDuelConfirm();
         } else if (this.showDialogDuel) {
@@ -684,6 +713,10 @@ class mudclient extends GameConnection {
 
             if (noMenus) {
                 this.menuItemsCount = 0;
+            }
+
+            if (this.options.groundItemText && noMenus) {
+                this.drawGroundItemText();
             }
 
             if (this.showUITab === 0 && noMenus) {
@@ -838,6 +871,13 @@ class mudclient extends GameConnection {
                 this.showDialogExchange && this.combatTimeout === 0;
 
             if (bankVisible && this.bankKeyPress(keyCode)) {
+                return true;
+            }
+
+            const tradeVisible = !higherModal && this.showDialogTrade &&
+                this.combatTimeout === 0;
+
+            if (tradeVisible && this.tradeKeyPress(keyCode)) {
                 return true;
             }
 
@@ -1282,7 +1322,8 @@ class mudclient extends GameConnection {
             this.lastMouseButtonDown = 0;
         }
 
-        if (this.showDialogTrade || this.showDialogDuel) {
+        if (this.showDialogTrade || this.showDialogDuel ||
+            (this.showDialogShop && this.options.holdToBuy)) {
             if (this.mouseButtonDown !== 0) {
                 this.mouseButtonDownTime++;
             } else {
@@ -3599,7 +3640,22 @@ class mudclient extends GameConnection {
     }
 
     createTopMouseMenu() {
-        if (this.selectedSpell >= 0 || this.selectedItemInventoryIndex >= 0) {
+        let addCancel =
+            this.selectedSpell >= 0 ||
+            this.selectedItemInventoryIndex >= 0;
+
+        if (!addCancel) {
+            for (let i = 0; i < this.menuItemsCount; i++) {
+                const type = this.menuType[i];
+
+                if (type >= 601 && type <= 604) {
+                    addCancel = true;
+                    break;
+                }
+            }
+        }
+
+        if (addCancel) {
             this.menuItemText1[this.menuItemsCount] = 'Cancel';
             this.menuItemText2[this.menuItemsCount] = '';
             this.menuType[this.menuItemsCount] = 4000;
@@ -3709,6 +3765,7 @@ class mudclient extends GameConnection {
 
     menuItemClick(i) {
         if (this.compassMenuItemClick(i)) return;
+        if (this.handleOfferMenuClick(i)) return;
         const menuX = this.menuItemX[i];
         const menuY = this.menuItemY[i];
         const menuIndex = this.menuIndex[i];

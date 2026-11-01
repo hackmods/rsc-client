@@ -81,6 +81,13 @@ class GameShell {
             bankValue: false,
             combatStyleAlways: false,
             compassMenu: false,
+            bankMenus: false,
+            offerX: true,
+            lastOfferX: true,
+            bankUnstackableWithdraw: false,
+            transactionMenus: false,
+            holdToBuy: true,
+            groundItemText: false,
             mobile: false
         };
 

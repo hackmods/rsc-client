@@ -1,170 +1,343 @@
 const GameData = require('../game-data');
 const clientOpcodes = require('../opcodes/client');
 const colours = require('./_colours');
+const { compactAmount } = require('../lib/format-amount');
 
 const DIALOG_X = 22;
 const DIALOG_Y = 36;
 
-function drawDialogTrade() {
-    if (
-        this.mouseButtonClick !== 0 &&
-        this.mouseButtonItemCountIncrement === 0
-    ) {
-        this.mouseButtonItemCountIncrement = 1;
+function sendTradeUpdate(client) {
+    client.packetStream.newPacket(clientOpcodes.TRADE_ITEM_UPDATE);
+    client.packetStream.putByte(client.tradeItemsCount);
+
+    for (let j = 0; j < client.tradeItemsCount; j++) {
+        client.packetStream.putShort(client.tradeItems[j]);
+        client.packetStream.putInt(client.tradeItemCount[j]);
     }
 
-    if (this.mouseButtonItemCountIncrement > 0) {
-        const mouseX = this.mouseX - 22;
-        const mouseY = this.mouseY - 36;
+    client.packetStream.sendPacket();
+    client.tradeRecipientAccepted = false;
+    client.tradeAccepted = false;
+}
 
-        if (mouseX >= 0 && mouseY >= 0 && mouseX < 468 && mouseY < 262) {
-            if (mouseX > 216 && mouseY > 30 && mouseX < 462 && mouseY < 235) {
-                const slot =
-                    (((mouseX - 217) / 49) | 0) +
-                    (((mouseY - 31) / 34) | 0) * 5;
+function tradeOfferItem(client, itemType, itemAmount) {
+    if (GameData.itemSpecial[itemType] === 1) {
+        client.showMessage(
+            'This object cannot be traded with other players',
+            3
+        );
+        return;
+    }
 
-                if (slot >= 0 && slot < this.inventoryItemsCount) {
-                    let sendUpdate = false;
-                    let itemCountAdd = 0;
+    let sendUpdate = false;
+    let itemCountAdd = 0;
 
-                    const itemType = this.inventoryItemId[slot];
-
-                    for (let i = 0; i < this.tradeItemsCount; i++) {
-                        if (this.tradeItems[i] === itemType) {
-                            if (GameData.itemStackable[itemType] === 0) {
-                                for (
-                                    let j = 0;
-                                    j < this.mouseButtonItemCountIncrement;
-                                    j++
-                                ) {
-                                    if (
-                                        this.tradeItemCount[i] <
-                                        this.inventoryItemStackCount[slot]
-                                    ) {
-                                        this.tradeItemCount[i]++;
-                                    }
-
-                                    sendUpdate = true;
-                                }
-                            } else {
-                                itemCountAdd++;
-                            }
-                        }
-                    }
-
-                    if (this.getInventoryCount(itemType) <= itemCountAdd) {
-                        sendUpdate = true;
-                    }
-
-                    if (GameData.itemSpecial[itemType] === 1) {
-                        this.showMessage(
-                            'This object cannot be traded with other players',
-                            3
-                        );
-                        sendUpdate = true;
-                    }
-
-                    if (!sendUpdate && this.tradeItemsCount < 12) {
-                        this.tradeItems[this.tradeItemsCount] = itemType;
-                        this.tradeItemCount[this.tradeItemsCount] = 1;
-                        this.tradeItemsCount++;
-                        sendUpdate = true;
-                    }
-
-                    if (sendUpdate) {
-                        this.packetStream.newPacket(
-                            clientOpcodes.TRADE_ITEM_UPDATE
-                        );
-                        this.packetStream.putByte(this.tradeItemsCount);
-
-                        for (let j = 0; j < this.tradeItemsCount; j++) {
-                            this.packetStream.putShort(this.tradeItems[j]);
-                            this.packetStream.putInt(this.tradeItemCount[j]);
-                        }
-
-                        this.packetStream.sendPacket();
-                        this.tradeRecipientAccepted = false;
-                        this.tradeAccepted = false;
-                    }
-                }
-            }
-
-            if (mouseX > 8 && mouseY > 30 && mouseX < 205 && mouseY < 133) {
-                const itemIndex =
-                    (((mouseX - 9) / 49) | 0) + (((mouseY - 31) / 34) | 0) * 4;
-
-                if (itemIndex >= 0 && itemIndex < this.tradeItemsCount) {
-                    const itemType = this.tradeItems[itemIndex];
-
-                    for (
-                        let i = 0;
-                        i < this.mouseButtonItemCountIncrement;
-                        i++
-                    ) {
-                        if (
-                            GameData.itemStackable[itemType] === 0 &&
-                            this.tradeItemCount[itemIndex] > 1
-                        ) {
-                            this.tradeItemCount[itemIndex]--;
-                            continue;
-                        }
-                        this.tradeItemsCount--;
-                        this.mouseButtonDownTime = 0;
-
-                        for (let j = itemIndex; j < this.tradeItemsCount; j++) {
-                            this.tradeItems[j] = this.tradeItems[j + 1];
-                            this.tradeItemCount[j] = this.tradeItemCount[j + 1];
-                        }
-
-                        break;
-                    }
-
-                    this.packetStream.newPacket(
-                        clientOpcodes.TRADE_ITEM_UPDATE
-                    );
-                    this.packetStream.putByte(this.tradeItemsCount);
-
-                    for (let i = 0; i < this.tradeItemsCount; i++) {
-                        this.packetStream.putShort(this.tradeItems[i]);
-                        this.packetStream.putInt(this.tradeItemCount[i]);
-                    }
-
-                    this.packetStream.sendPacket();
-                    this.tradeRecipientAccepted = false;
-                    this.tradeAccepted = false;
-                }
-            }
-
-            if (
-                mouseX >= 217 &&
-                mouseY >= 238 &&
-                mouseX <= 286 &&
-                mouseY <= 259
-            ) {
-                this.tradeAccepted = true;
-                this.packetStream.newPacket(clientOpcodes.TRADE_ACCEPT);
-                this.packetStream.sendPacket();
-            }
-
-            if (
-                mouseX >= 394 &&
-                mouseY >= 238 &&
-                mouseX < 463 &&
-                mouseY < 259
-            ) {
-                this.showDialogTrade = false;
-                this.packetStream.newPacket(clientOpcodes.TRADE_DECLINE);
-                this.packetStream.sendPacket();
-            }
-        } else if (this.mouseButtonClick !== 0) {
-            this.showDialogTrade = false;
-            this.packetStream.newPacket(clientOpcodes.TRADE_DECLINE);
-            this.packetStream.sendPacket();
+    for (let i = 0; i < client.tradeItemsCount; i++) {
+        if (client.tradeItems[i] !== itemType) {
+            continue;
         }
 
-        this.mouseButtonClick = 0;
-        this.mouseButtonItemCountIncrement = 0;
+        if (GameData.itemStackable[itemType] === 0) {
+            const invStack = (() => {
+                for (let s = 0; s < client.inventoryItemsCount; s++) {
+                    if (client.inventoryItemId[s] === itemType) {
+                        return client.inventoryItemStackCount[s];
+                    }
+                }
+                return 0;
+            })();
+
+            for (let j = 0; j < itemAmount; j++) {
+                if (client.tradeItemCount[i] < invStack) {
+                    client.tradeItemCount[i]++;
+                }
+
+                sendUpdate = true;
+            }
+        } else {
+            itemCountAdd += itemAmount;
+        }
     }
+
+    if (client.getInventoryCount(itemType) <= itemCountAdd) {
+        sendUpdate = true;
+    }
+
+    if (!sendUpdate && client.tradeItemsCount < 12) {
+        if (GameData.itemStackable[itemType] === 0 && itemAmount > 1) {
+            client.tradeItems[client.tradeItemsCount] = itemType;
+            client.tradeItemCount[client.tradeItemsCount] = itemAmount;
+            client.tradeItemsCount++;
+        } else {
+            const end = Math.min(
+                12,
+                client.tradeItemsCount + Math.max(1, itemAmount)
+            );
+
+            if (GameData.itemStackable[itemType] === 1) {
+                for (
+                    let i = client.tradeItemsCount;
+                    i < end && client.tradeItemsCount < 12;
+                    i++
+                ) {
+                    client.tradeItems[client.tradeItemsCount] = itemType;
+                    client.tradeItemCount[client.tradeItemsCount] = 1;
+                    client.tradeItemsCount++;
+                }
+            } else {
+                client.tradeItems[client.tradeItemsCount] = itemType;
+                client.tradeItemCount[client.tradeItemsCount] = 1;
+                client.tradeItemsCount++;
+            }
+        }
+
+        sendUpdate = true;
+    }
+
+    if (sendUpdate) {
+        sendTradeUpdate(client);
+    }
+}
+
+function tradeRemoveItem(client, itemType, itemAmount) {
+    for (let n = 0; n < itemAmount; n++) {
+        let removed = false;
+
+        for (let i = 0; i < client.tradeItemsCount; i++) {
+            if (client.tradeItems[i] !== itemType) {
+                continue;
+            }
+
+            if (
+                GameData.itemStackable[itemType] === 0 &&
+                client.tradeItemCount[i] > 1
+            ) {
+                client.tradeItemCount[i]--;
+                removed = true;
+                break;
+            }
+
+            client.tradeItemsCount--;
+
+            for (let j = i; j < client.tradeItemsCount; j++) {
+                client.tradeItems[j] = client.tradeItems[j + 1];
+                client.tradeItemCount[j] = client.tradeItemCount[j + 1];
+            }
+
+            removed = true;
+            break;
+        }
+
+        if (!removed) {
+            break;
+        }
+    }
+
+    sendTradeUpdate(client);
+}
+
+function tradeKeyPress(keyCode) {
+    if (!this.showDialogTrade || !this.tradeAmountInput) {
+        return false;
+    }
+
+    const input = this.tradeAmountInput;
+
+    if (keyCode === 27) {
+        this.tradeAmountInput = null;
+    } else if (keyCode === 13 || keyCode === 10) {
+        const amount = /^\d+$/.test(input.text) ? Number(input.text) : NaN;
+
+        if (
+            Number.isInteger(amount) &&
+            amount >= 1 &&
+            amount <= input.max
+        ) {
+            if (input.mode === 'offer') {
+                tradeOfferItem(this, input.id, amount);
+            } else {
+                tradeRemoveItem(this, input.id, amount);
+            }
+
+            this.tradeLastOfferX = amount;
+            this.tradeAmountInput = null;
+        } else {
+            input.error = `Enter an amount from 1 to ${input.max}`;
+        }
+    } else if (keyCode === 8) {
+        input.text = input.text.slice(0, -1);
+        input.error = '';
+    } else if (keyCode >= 48 && keyCode <= 57 && input.text.length < 5) {
+        input.text += String.fromCharCode(keyCode);
+        input.error = '';
+    }
+
+    return true;
+}
+
+function populateTradeOfferMenus(client) {
+    if (
+        !client.options.transactionMenus ||
+        client.showRightClickMenu ||
+        client.tradeAmountInput
+    ) {
+        return;
+    }
+
+    const mouseX = client.mouseX - DIALOG_X;
+    const mouseY = client.mouseY - DIALOG_Y;
+    const { addOfferMenus } = require('./offer-menus');
+
+    if (
+        mouseX > 216 &&
+        mouseY > 30 &&
+        mouseX < 462 &&
+        mouseY < 235
+    ) {
+        const slot =
+            (((mouseX - 217) / 49) | 0) + (((mouseY - 31) / 34) | 0) * 5;
+
+        if (slot >= 0 && slot < client.inventoryItemsCount) {
+            const itemId = client.inventoryItemId[slot];
+            const itemName = `@lre@${GameData.itemName[itemId] || ''}`;
+            const itemAmount = client.getInventoryCount(itemId);
+
+            addOfferMenus(
+                client,
+                'Offer',
+                603,
+                itemId,
+                itemAmount,
+                itemName,
+                client.tradeLastOfferX || 0
+            );
+        }
+
+        return;
+    }
+
+    if (mouseX > 8 && mouseY > 30 && mouseX < 205 && mouseY < 133) {
+        const itemIndex =
+            (((mouseX - 9) / 49) | 0) + (((mouseY - 31) / 34) | 0) * 4;
+
+        if (itemIndex >= 0 && itemIndex < client.tradeItemsCount) {
+            const itemId = client.tradeItems[itemIndex];
+            let itemAmount = 0;
+
+            for (let i = 0; i < client.tradeItemsCount; i++) {
+                if (client.tradeItems[i] !== itemId) {
+                    continue;
+                }
+
+                if (GameData.itemStackable[itemId] === 0) {
+                    itemAmount = client.tradeItemCount[i];
+                    break;
+                }
+
+                itemAmount++;
+            }
+
+            const itemName = `@lre@${GameData.itemName[itemId] || ''}`;
+
+            addOfferMenus(
+                client,
+                'Remove',
+                604,
+                itemId,
+                itemAmount,
+                itemName,
+                client.tradeLastOfferX || 0
+            );
+        }
+    }
+}
+
+function handleTradePointer(client) {
+    const mouseX = client.mouseX - DIALOG_X;
+    const mouseY = client.mouseY - DIALOG_Y;
+    const useMenus = client.options && client.options.transactionMenus;
+
+    if (!useMenus) {
+        if (
+            client.mouseButtonClick !== 0 &&
+            client.mouseButtonItemCountIncrement === 0
+        ) {
+            client.mouseButtonItemCountIncrement = 1;
+        }
+
+        if (client.mouseButtonItemCountIncrement <= 0) {
+            return;
+        }
+    } else if (client.mouseButtonClick === 0) {
+        return;
+    }
+
+    if (mouseX >= 0 && mouseY >= 0 && mouseX < 468 && mouseY < 262) {
+        if (!useMenus && mouseX > 216 && mouseY > 30 && mouseX < 462 && mouseY < 235) {
+            const slot =
+                (((mouseX - 217) / 49) | 0) +
+                (((mouseY - 31) / 34) | 0) * 5;
+
+            if (slot >= 0 && slot < client.inventoryItemsCount) {
+                tradeOfferItem(
+                    client,
+                    client.inventoryItemId[slot],
+                    client.mouseButtonItemCountIncrement
+                );
+            }
+        }
+
+        if (!useMenus && mouseX > 8 && mouseY > 30 && mouseX < 205 && mouseY < 133) {
+            const itemIndex =
+                (((mouseX - 9) / 49) | 0) + (((mouseY - 31) / 34) | 0) * 4;
+
+            if (itemIndex >= 0 && itemIndex < client.tradeItemsCount) {
+                tradeRemoveItem(
+                    client,
+                    client.tradeItems[itemIndex],
+                    client.mouseButtonItemCountIncrement
+                );
+            }
+        }
+
+        if (
+            mouseX >= 217 &&
+            mouseY >= 238 &&
+            mouseX <= 286 &&
+            mouseY <= 259
+        ) {
+            client.tradeAccepted = true;
+            client.packetStream.newPacket(clientOpcodes.TRADE_ACCEPT);
+            client.packetStream.sendPacket();
+        }
+
+        if (
+            mouseX >= 394 &&
+            mouseY >= 238 &&
+            mouseX < 463 &&
+            mouseY < 259
+        ) {
+            client.showDialogTrade = false;
+            client.packetStream.newPacket(clientOpcodes.TRADE_DECLINE);
+            client.packetStream.sendPacket();
+        }
+    } else if (client.mouseButtonClick !== 0) {
+        client.showDialogTrade = false;
+        client.packetStream.newPacket(clientOpcodes.TRADE_DECLINE);
+        client.packetStream.sendPacket();
+    }
+
+    client.mouseButtonClick = 0;
+
+    if (useMenus) {
+        client.mouseButtonItemCountIncrement = 0;
+    } else {
+        client.mouseButtonItemCountIncrement = 0;
+    }
+}
+
+function drawDialogTrade() {
+    handleTradePointer(this);
 
     if (!this.showDialogTrade) {
         return;
@@ -412,8 +585,13 @@ function drawDialogTrade() {
         );
 
         if (GameData.itemStackable[this.inventoryItemId[i]] === 0) {
+            const count = this.inventoryItemStackCount[i];
+            const label = this.options.compactAmounts
+                ? compactAmount(count)
+                : count.toString();
+
             this.surface.drawString(
-                this.inventoryItemStackCount[i].toString(),
+                label,
                 slotX + 1,
                 slotY + 10,
                 1,
@@ -439,8 +617,13 @@ function drawDialogTrade() {
         );
 
         if (GameData.itemStackable[this.tradeItems[i]] === 0) {
+            const count = this.tradeItemCount[i];
+            const label = this.options.compactAmounts
+                ? compactAmount(count)
+                : count.toString();
+
             this.surface.drawString(
-                this.tradeItemCount[i].toString(),
+                label,
                 slotX + 1,
                 slotY + 10,
                 1,
@@ -508,9 +691,44 @@ function drawDialogTrade() {
             );
         }
     }
+
+    if (this.tradeAmountInput) {
+        const input = this.tradeAmountInput;
+        const cx = DIALOG_X + 234;
+        const cy = DIALOG_Y + 120;
+
+        this.surface.drawBox(cx - 120, cy - 20, 240, 84, 0);
+        this.surface.drawBoxEdge(cx - 120, cy - 20, 240, 84, colours.white);
+        this.surface.drawStringCenter(
+            `${input.mode === 'offer' ? 'Offer' : 'Remove'} how many? (1-${input.max})`,
+            cx,
+            cy,
+            1,
+            colours.white
+        );
+        this.surface.drawStringCenter(`${input.text}*`, cx, cy + 20, 3, colours.cyan);
+        this.surface.drawStringCenter(
+            input.error || 'Enter to confirm',
+            cx,
+            cy + 32,
+            1,
+            colours.yellow
+        );
+        this.surface.drawStringCenter(
+            'Cancel (Escape)',
+            cx,
+            cy + 52,
+            1,
+            colours.white
+        );
+    }
 }
 
 module.exports = {
     drawDialogTrade,
-    showDialogTrade: false
+    showDialogTrade: false,
+    tradeOfferItem,
+    tradeRemoveItem,
+    tradeKeyPress,
+    populateTradeOfferMenus
 };

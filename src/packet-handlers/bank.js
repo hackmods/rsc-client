@@ -6,6 +6,9 @@ module.exports = {
         // The server also reopens after compaction; preserve an active search.
         if (!this.showDialogBank && this.resetBankInput) this.resetBankInput();
         this.showDialogBank = true;
+        if (this.options && this.options.bankMenus) {
+            this.showRightClickMenu = false;
+        }
 
         let offset = 1;
 

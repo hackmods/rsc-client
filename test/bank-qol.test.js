@@ -12,6 +12,7 @@ function client() {
     let packet;
     const c = Object.assign({}, bank, {
         gameWidth: 800, gameHeight: 600, showDialogBank: true,
+        options: {},
         bankItems: [0, 1, 2], bankItemsCount: [20, 100000, 3], bankItemCount: 3,
         bankSelectedItem: -2, bankSelectedItemSlot: -1,
         mouseX: 0, mouseY: 0, mouseButtonClick: 0, spriteItem: 0,
@@ -77,6 +78,17 @@ test('nonstackable withdrawals remain one; typing is consumed only while bank in
     assert.equal(c.bankKeyPress(65), true);
     c.bankKeyPress(27); click(c, 70, 290); type(c, 'iron');
     c.resetBankInput(); assert.equal(c.bankSearch, ''); assert.equal(c.bankKeyPress(65), false);
+});
+test('bankUnstackableWithdraw allows All to withdraw more than one nonstackable', () => {
+    const { c, packets } = client();
+    c.options = { bankUnstackableWithdraw: true };
+    c.bankItems = [0];
+    c.bankItemsCount = [5];
+    c.bankItemCount = 1;
+    data.itemStackable[0] = 1;
+    click(c, 15, 35);
+    click(c, 380, 240);
+    assert.equal(packets[0][2], 5);
 });
 test('mobile focus uses existing keyboard and cancel/reset clean it up without transactions', () => {
     const { c, packets } = client();

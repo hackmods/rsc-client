@@ -5,11 +5,83 @@ const colours = require('./_colours');
 const COINS_ID = 10;
 
 function drawDialogShop() {
+    const dialogX = 52;
+    const dialogY = 44;
+    const mouseX = this.mouseX - dialogX;
+    const mouseY = this.mouseY - dialogY;
+    const holdBuy = this.options && this.options.holdToBuy;
+    const itemGridHeight = 28 + 5 * 34;
+
+    if (
+        this.shopSelectedItemIndex >= 0 &&
+        (this.mouseButtonClick !== 0 ||
+            (holdBuy && this.mouseButtonItemCountIncrement > 0))
+    ) {
+        const itemID = this.shopItem[this.shopSelectedItemIndex];
+
+        if (itemID !== -1) {
+            let acted = false;
+
+            if (
+                this.shopItemCount[this.shopSelectedItemIndex] > 0 &&
+                mouseX > 298 &&
+                mouseY >= 204 &&
+                mouseX < 408 &&
+                mouseY <= 215
+            ) {
+                let priceMod =
+                    this.shopBuyPriceMod +
+                    this.shopItemPrice[this.shopSelectedItemIndex];
+
+                if (priceMod < 10) {
+                    priceMod = 10;
+                }
+
+                const itemPrice =
+                    ((priceMod * GameData.itemBasePrice[itemID]) / 100) | 0;
+
+                this.packetStream.newPacket(clientOpcodes.SHOP_BUY);
+                this.packetStream.putShort(
+                    this.shopItem[this.shopSelectedItemIndex]
+                );
+                this.packetStream.putInt(itemPrice);
+                this.packetStream.sendPacket();
+                acted = true;
+            } else if (
+                this.getInventoryCount(itemID) > 0 &&
+                mouseX > 2 &&
+                mouseY >= 229 &&
+                mouseX < 112 &&
+                mouseY <= 240
+            ) {
+                let priceMod =
+                    this.shopSellPriceMod +
+                    this.shopItemPrice[this.shopSelectedItemIndex];
+
+                if (priceMod < 10) {
+                    priceMod = 10;
+                }
+
+                const itemPrice =
+                    ((priceMod * GameData.itemBasePrice[itemID]) / 100) | 0;
+
+                this.packetStream.newPacket(clientOpcodes.SHOP_SELL);
+                this.packetStream.putShort(
+                    this.shopItem[this.shopSelectedItemIndex]
+                );
+                this.packetStream.putInt(itemPrice);
+                this.packetStream.sendPacket();
+                acted = true;
+            }
+
+            if (holdBuy && !acted) {
+                this.mouseButtonItemCountIncrement = 0;
+            }
+        }
+    }
+
     if (this.mouseButtonClick !== 0) {
         this.mouseButtonClick = 0;
-
-        const mouseX = this.mouseX - 52;
-        const mouseY = this.mouseY - 44;
 
         if (mouseX >= 0 && mouseY >= 12 && mouseX < 408 && mouseY < 246) {
             let itemIndex = 0;
@@ -33,72 +105,6 @@ function drawDialogShop() {
                     itemIndex++;
                 }
             }
-
-            if (this.shopSelectedItemIndex >= 0) {
-                const itemID = this.shopItem[this.shopSelectedItemIndex];
-
-                if (itemID !== -1) {
-                    if (
-                        this.shopItemCount[this.shopSelectedItemIndex] > 0 &&
-                        mouseX > 298 &&
-                        mouseY >= 204 &&
-                        mouseX < 408 &&
-                        mouseY <= 215
-                    ) {
-                        let priceMod =
-                            this.shopBuyPriceMod +
-                            this.shopItemPrice[this.shopSelectedItemIndex];
-
-                        if (priceMod < 10) {
-                            priceMod = 10;
-                        }
-
-                        const itemPrice =
-                            ((priceMod * GameData.itemBasePrice[itemID]) /
-                                100) |
-                            0;
-
-                        this.packetStream.newPacket(clientOpcodes.SHOP_BUY);
-
-                        this.packetStream.putShort(
-                            this.shopItem[this.shopSelectedItemIndex]
-                        );
-
-                        this.packetStream.putInt(itemPrice);
-                        this.packetStream.sendPacket();
-                    }
-
-                    if (
-                        this.getInventoryCount(itemID) > 0 &&
-                        mouseX > 2 &&
-                        mouseY >= 229 &&
-                        mouseX < 112 &&
-                        mouseY <= 240
-                    ) {
-                        let priceMod =
-                            this.shopSellPriceMod +
-                            this.shopItemPrice[this.shopSelectedItemIndex];
-
-                        if (priceMod < 10) {
-                            priceMod = 10;
-                        }
-
-                        const itemPrice =
-                            ((priceMod * GameData.itemBasePrice[itemID]) /
-                                100) |
-                            0;
-
-                        this.packetStream.newPacket(clientOpcodes.SHOP_SELL);
-
-                        this.packetStream.putShort(
-                            this.shopItem[this.shopSelectedItemIndex]
-                        );
-
-                        this.packetStream.putInt(itemPrice);
-                        this.packetStream.sendPacket();
-                    }
-                }
-            }
         } else {
             this.packetStream.newPacket(clientOpcodes.SHOP_CLOSE);
             this.packetStream.sendPacket();
@@ -107,8 +113,9 @@ function drawDialogShop() {
         }
     }
 
-    const dialogX = 52;
-    const dialogY = 44;
+    if (holdBuy) {
+        this.mouseButtonItemCountIncrement = 0;
+    }
 
     this.surface.drawBox(dialogX, dialogY, 408, 12, 192);
 
